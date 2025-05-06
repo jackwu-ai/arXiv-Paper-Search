@@ -2,6 +2,7 @@ import requests
 import time
 import logging
 from urllib.parse import urlencode
+import xml.etree.ElementTree as ET
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,6 +12,11 @@ ARXIV_API_URL = "http://export.arxiv.org/api/query"
 REQUEST_THROTTLE_SECONDS = 3.1  # Slightly more than 3 seconds to be safe
 DEFAULT_TIMEOUT_SECONDS = 10 # Default timeout for requests
 MAX_RETRIES = 3 # Maximum number of retries for a request
+
+NAMESPACES = {
+    'atom': 'http://www.w3.org/2005/Atom',
+    'arxiv': 'http://arxiv.org/schemas/atom'
+}
 
 def construct_query_url(search_query: str = None, id_list: list = None, start: int = 0, max_results: int = 10, sortBy: str = "relevance", sortOrder: str = "descending") -> str:
     """
@@ -127,9 +133,91 @@ def search_papers(query: str = None, ids: list = None, start_index: int = 0, cou
         # Placeholder for parsing logic (Subtask 2.2 and 2.3)
         logger.info("API request successful. XML response received.")
         # For now, just returning the raw XML. Parsing will be implemented later.
-        return response_xml 
+        # return response_xml 
+        parsed_papers = parse_arxiv_xml(response_xml)
+        if parsed_papers is not None:
+            logger.info(f"Successfully parsed {len(parsed_papers)} papers from XML.")
+            return parsed_papers
+        else:
+            logger.error("Failed to parse XML response in search_papers.")
+            return None # Or an empty list, depending on desired error handling for the caller
     else:
         logger.error("API request failed after multiple retries in search_papers.")
+        return None
+
+def parse_arxiv_xml(xml_string: str) -> list[dict] | None:
+    """
+    Parses the XML response from arXiv API into a list of paper dictionaries.
+
+    Args:
+        xml_string: The raw XML string from the API.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents a paper,
+        or None if parsing fails.
+    """
+    try:
+        root = ET.fromstring(xml_string)
+        papers = []
+        for entry in root.findall('atom:entry', NAMESPACES):
+            paper = {}
+            # Helper to find text, returning None if element is not found
+            def find_text(element, path, namespace_map=NAMESPACES):
+                found = element.find(path, namespace_map)
+                return found.text.strip() if found is not None and found.text else None
+
+            # Helper to find all texts for a given path (e.g., multiple authors)
+            def find_all_texts(element, path, sub_path, namespace_map=NAMESPACES):
+                elements = element.findall(path, namespace_map)
+                texts = []
+                for el in elements:
+                    sub_el = el.find(sub_path, namespace_map)
+                    if sub_el is not None and sub_el.text:
+                        texts.append(sub_el.text.strip())
+                return texts
+            
+            # Helper to find an attribute
+            def find_attribute(element, path, attribute_name, namespace_map=NAMESPACES):
+                found = element.find(path, namespace_map)
+                return found.get(attribute_name) if found is not None else None
+
+            # Extracting common fields
+            id_full_url = find_text(entry, 'atom:id')
+            paper['id_str'] = id_full_url.split('/abs/')[-1] if id_full_url else None
+            paper['title'] = find_text(entry, 'atom:title')
+            paper['summary'] = find_text(entry, 'atom:summary')
+            paper['published_date'] = find_text(entry, 'atom:published')
+            paper['updated_date'] = find_text(entry, 'atom:updated')
+            
+            paper['authors'] = find_all_texts(entry, 'atom:author', 'atom:name')
+            
+            categories_elements = entry.findall('atom:category', NAMESPACES)
+            paper['categories'] = [cat.get('term') for cat in categories_elements if cat.get('term')]
+
+            if paper['id_str']:
+                paper['pdf_link'] = f"http://arxiv.org/pdf/{paper['id_str']}.pdf"
+            else:
+                paper['pdf_link'] = None
+
+            # arXiv specific fields
+            paper['doi'] = find_text(entry, 'arxiv:doi', NAMESPACES)
+            paper['primary_category'] = find_attribute(entry, 'arxiv:primary_category', 'term', NAMESPACES)
+            
+            # Add paper to list if it has an ID and title (basic validation)
+            if paper['id_str'] and paper['title']:
+                papers.append(paper)
+            else:
+                logger.warning(f"Skipping entry due to missing ID or title: {ET.tostring(entry, encoding='unicode')[:200]}...")
+
+        return papers
+
+    except ET.ParseError as e:
+        logger.error(f"Failed to parse XML string: {e}")
+        logger.error(f"Problematic XML snippet (first 500 chars): {xml_string[:500]}...")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during XML parsing: {e}")
+        logger.error(f"Problematic XML snippet (first 500 chars): {xml_string[:500]}...")
         return None
 
 # Example usage (for testing during development)
