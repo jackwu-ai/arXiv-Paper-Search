@@ -3,6 +3,8 @@ import time
 import logging
 from urllib.parse import urlencode
 import xml.etree.ElementTree as ET
+from typing import List, Optional
+from .models import ArxivPaper
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -98,7 +100,7 @@ def make_api_request(query_url: str):
             logger.error(f"All {MAX_RETRIES} retries failed for URL: {query_url}")
     return None
 
-def search_papers(query: str = None, ids: list = None, start_index: int = 0, count: int = 10, sort_by: str = "relevance", sort_order: str = "descending"):
+def search_papers(query: str = None, ids: list = None, start_index: int = 0, count: int = 10, sort_by: str = "relevance", sort_order: str = "descending") -> List[ArxivPaper] | None:
     """
     High-level function to search for papers on arXiv.
 
@@ -111,7 +113,7 @@ def search_papers(query: str = None, ids: list = None, start_index: int = 0, cou
         sort_order: Sorting order.
 
     Returns:
-        Parsed search results (details TBD in subtask 2.2 and 2.3) or None on error.
+        A list of ArxivPaper objects or None on error.
     """
     logger.info(f"Searching papers with query='{query}', ids='{ids}', start={start_index}, count={count}")
     query_url = construct_query_url(
@@ -145,22 +147,21 @@ def search_papers(query: str = None, ids: list = None, start_index: int = 0, cou
         logger.error("API request failed after multiple retries in search_papers.")
         return None
 
-def parse_arxiv_xml(xml_string: str) -> list[dict] | None:
+def parse_arxiv_xml(xml_string: str) -> List[ArxivPaper] | None:
     """
-    Parses the XML response from arXiv API into a list of paper dictionaries.
+    Parses the XML response from arXiv API into a list of ArxivPaper objects.
 
     Args:
         xml_string: The raw XML string from the API.
 
     Returns:
-        A list of dictionaries, where each dictionary represents a paper,
-        or None if parsing fails.
+        A list of ArxivPaper objects, or None if parsing fails.
     """
     try:
         root = ET.fromstring(xml_string)
         papers = []
         for entry in root.findall('atom:entry', NAMESPACES):
-            paper = {}
+            paper_data = {}
             # Helper to find text, returning None if element is not found
             def find_text(element, path, namespace_map=NAMESPACES):
                 found = element.find(path, namespace_map)
@@ -181,33 +182,38 @@ def parse_arxiv_xml(xml_string: str) -> list[dict] | None:
                 found = element.find(path, namespace_map)
                 return found.get(attribute_name) if found is not None else None
 
-            # Extracting common fields
+            # Extracting common fields into paper_data dictionary
             id_full_url = find_text(entry, 'atom:id')
-            paper['id_str'] = id_full_url.split('/abs/')[-1] if id_full_url else None
-            paper['title'] = find_text(entry, 'atom:title')
-            paper['summary'] = find_text(entry, 'atom:summary')
-            paper['published_date'] = find_text(entry, 'atom:published')
-            paper['updated_date'] = find_text(entry, 'atom:updated')
+            paper_data['id_str'] = id_full_url.split('/abs/')[-1] if id_full_url else None
+            paper_data['title'] = find_text(entry, 'atom:title')
+            paper_data['summary'] = find_text(entry, 'atom:summary')
+            paper_data['published_date'] = find_text(entry, 'atom:published')
+            paper_data['updated_date'] = find_text(entry, 'atom:updated')
             
-            paper['authors'] = find_all_texts(entry, 'atom:author', 'atom:name')
+            paper_data['authors'] = find_all_texts(entry, 'atom:author', 'atom:name')
             
             categories_elements = entry.findall('atom:category', NAMESPACES)
-            paper['categories'] = [cat.get('term') for cat in categories_elements if cat.get('term')]
+            paper_data['categories'] = [cat.get('term') for cat in categories_elements if cat.get('term')]
 
-            if paper['id_str']:
-                paper['pdf_link'] = f"http://arxiv.org/pdf/{paper['id_str']}.pdf"
+            if paper_data['id_str']:
+                paper_data['pdf_link'] = f"http://arxiv.org/pdf/{paper_data['id_str']}.pdf"
             else:
-                paper['pdf_link'] = None
+                paper_data['pdf_link'] = None
 
             # arXiv specific fields
-            paper['doi'] = find_text(entry, 'arxiv:doi', NAMESPACES)
-            paper['primary_category'] = find_attribute(entry, 'arxiv:primary_category', 'term', NAMESPACES)
+            paper_data['doi'] = find_text(entry, 'arxiv:doi', NAMESPACES)
+            paper_data['primary_category'] = find_attribute(entry, 'arxiv:primary_category', 'term', NAMESPACES)
             
-            # Add paper to list if it has an ID and title (basic validation)
-            if paper['id_str'] and paper['title']:
-                papers.append(paper)
-            else:
-                logger.warning(f"Skipping entry due to missing ID or title: {ET.tostring(entry, encoding='unicode')[:200]}...")
+            # Instantiate ArxivPaper object
+            try:
+                # Ensure all required fields for ArxivPaper are present or have defaults
+                # The ArxivPaper dataclass might raise ValueError if required fields are missing
+                paper_obj = ArxivPaper(**paper_data)
+                papers.append(paper_obj)
+            except ValueError as ve:
+                logger.warning(f"Skipping entry due to validation error: {ve}. Data: {paper_data}")
+            except TypeError as te:
+                 logger.warning(f"Skipping entry due to TypeError (likely missing field for dataclass): {te}. Data: {paper_data}")
 
         return papers
 
@@ -215,7 +221,7 @@ def parse_arxiv_xml(xml_string: str) -> list[dict] | None:
         logger.error(f"Failed to parse XML string: {e}")
         logger.error(f"Problematic XML snippet (first 500 chars): {xml_string[:500]}...")
         return None
-    except Exception as e:
+    except Exception as e: # Catch any other unexpected errors during parsing
         logger.error(f"An unexpected error occurred during XML parsing: {e}")
         logger.error(f"Problematic XML snippet (first 500 chars): {xml_string[:500]}...")
         return None
