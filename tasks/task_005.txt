@@ -1,0 +1,669 @@
+# Task ID: 5
+# Title: Implement Backend Routes
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Create the Flask routes to handle the homepage and search functionality.
+# Details:
+Create the routes.py file with the following content:
+
+```python
+from flask import render_template, request, current_app as app
+from app.arxiv_api import search_arxiv
+
+@app.route('/')
+def index():
+    """Render the homepage with the search form."""
+    return render_template('index.html')
+
+@app.route('/search')
+def search():
+    """Handle search requests and display results."""
+    query = request.args.get('query', '')
+    
+    if not query:
+        return render_template('index.html')
+    
+    try:
+        results = search_arxiv(query)
+    except Exception as e:
+        results = {'error': f'An error occurred: {str(e)}'}
+    
+    return render_template('index.html', query=query, results=results)
+```
+
+Update the __init__.py file to register the routes:
+
+```python
+from flask import Flask
+
+def create_app():
+    app = Flask(__name__)
+    
+    with app.app_context():
+        from app import routes
+    
+    return app
+```
+
+Create a main.py file in the root directory to run the application:
+
+```python
+from app import create_app
+
+app = create_app()
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+# Test Strategy:
+Test the routes by running the application and verifying that:
+1. The homepage loads correctly with the search form
+2. Submitting a search query returns results from the arXiv API
+3. Error handling works correctly when the API request fails
+4. Empty queries are handled appropriately
+
+Use both manual testing and automated tests with pytest to verify the functionality.
+
+# Subtasks:
+## 1. Create Application Factory and Entry Point [done]
+### Dependencies: None
+### Description: Set up the Flask application factory pattern and main entry point for the backend
+### Details:
+1. Create app.py with create_app() factory function
+2. Configure application settings (debug mode, secret key)
+3. Register blueprints for different route modules
+4. Set up error handlers for 404 and 500 errors
+5. Implement logging configuration
+6. Create __init__.py files for proper package structure
+7. Add WSGI entry point for production deployment
+8. Test application initialization with different configuration settings
+9. Verify proper error handling when invalid configurations are provided
+<info added on 2025-05-06T21:24:45.211Z>
+## Project Structure
+- `app/__init__.py`: Contains the `create_app()` factory function
+- `app/routes.py`: Defines a simple main blueprint with a test route
+- `app/templates/404.html`: Basic template for 404 errors
+- `app/templates/500.html`: Basic template for 500 errors
+- `config.py`: Configuration classes (Config, DevelopmentConfig, ProductionConfig)
+- `run.py`: Main entry point for the Flask development server
+
+## Implementation Steps
+1. Create app.py with create_app() factory function
+   - Initialize Flask application instance
+   - Load configuration from config_class parameter
+   - Register blueprints for different route modules
+   - Set up error handlers for 404 and 500 errors
+   - Configure logging based on environment (debug vs production)
+
+2. Create config.py with configuration classes
+   - Base Config class with SECRET_KEY
+   - DevelopmentConfig with DEBUG=True
+   - ProductionConfig with DEBUG=False
+
+3. Set up basic routing structure
+   - Create main blueprint in routes.py
+   - Implement a simple /ping test endpoint
+
+4. Create error templates
+   - 404.html for "Page Not Found" errors
+   - 500.html for "Internal Server Error" errors
+
+5. Implement logging configuration
+   - Console handler for development
+   - Basic file logging for production
+
+6. Create __init__.py files for proper package structure
+
+7. Add WSGI entry point (run.py) for development and production deployment
+   - Import create_app function
+   - Select appropriate configuration
+   - Run the application
+
+8. Test application initialization with different configuration settings
+   - Verify proper loading of development vs production configs
+   - Test blueprint registration
+
+9. Verify proper error handling when invalid configurations are provided
+   - Test error handlers for 404 and 500 errors
+</info added on 2025-05-06T21:24:45.211Z>
+<info added on 2025-05-06T21:26:17.174Z>
+1. Create app.py with create_app() factory function
+2. Configure application settings (debug mode, secret key)
+3. Register blueprints for different route modules
+4. Set up error handlers for 404 and 500 errors
+5. Implement logging configuration
+6. Create __init__.py files for proper package structure
+7. Add WSGI entry point for production deployment
+8. Test application initialization with different configuration settings
+9. Verify proper error handling when invalid configurations are provided
+<info added on 2025-05-06T21:24:45.211Z>
+## Project Structure
+- `app/__init__.py`: Contains the `create_app()` factory function
+- `app/routes.py`: Defines a simple main blueprint with a test route
+- `app/templates/404.html`: Basic template for 404 errors
+- `app/templates/500.html`: Basic template for 500 errors
+- `config.py`: Configuration classes (Config, DevelopmentConfig, ProductionConfig)
+- `run.py`: Main entry point for the Flask development server
+
+## Implementation Steps
+1. Create app.py with create_app() factory function
+   - Initialize Flask application instance
+   - Load configuration from config_class parameter
+   - Register blueprints for different route modules
+   - Set up error handlers for 404 and 500 errors
+   - Configure logging based on environment (debug vs production)
+
+2. Create config.py with configuration classes
+   - Base Config class with SECRET_KEY
+   - DevelopmentConfig with DEBUG=True
+   - ProductionConfig with DEBUG=False
+
+3. Set up basic routing structure
+   - Create main blueprint in routes.py
+   - Implement a simple /ping test endpoint
+
+4. Create error templates
+   - 404.html for "Page Not Found" errors
+   - 500.html for "Internal Server Error" errors
+
+5. Implement logging configuration
+   - Console handler for development
+   - Basic file logging for production
+
+6. Create __init__.py files for proper package structure
+
+7. Add WSGI entry point (run.py) for development and production deployment
+   - Import create_app function
+   - Select appropriate configuration
+   - Run the application
+
+8. Test application initialization with different configuration settings
+   - Verify proper loading of development vs production configs
+   - Test blueprint registration
+
+9. Verify proper error handling when invalid configurations are provided
+   - Test error handlers for 404 and 500 errors
+</info added on 2025-05-06T21:24:45.211Z>
+
+The initial implementation of the Flask application factory and entry point has been completed successfully. The following files have been created and configured:
+
+1. **Configuration Management (`config.py`)**:
+   - Created three configuration classes: `Config` (base), `DevelopmentConfig`, and `ProductionConfig`
+   - Implemented a `config` dictionary for easy configuration selection
+   - Added `LOG_TO_STDOUT` parameter to `ProductionConfig` for deployment logging
+
+2. **Application Factory (`app/__init__.py`)**:
+   - Implemented `create_app()` factory function that:
+     - Initializes a Flask application instance
+     - Loads configuration from the specified config class
+     - Sets up environment-specific logging (console for development, INFO level for production)
+     - Registers the main blueprint from `app.routes`
+     - Configures error handlers for 404 and 500 errors
+   - Added a `/health` endpoint for monitoring application status
+
+3. **Routing Structure (`app/routes.py`)**:
+   - Created the main blueprint
+   - Implemented a `/ping` test endpoint that returns `{"message":"pong"}`
+
+4. **Error Handling**:
+   - Created template files for error pages:
+     - `app/templates/404.html` for "Page Not Found" errors
+     - `app/templates/500.html` for "Internal Server Error" errors
+   - Registered error handlers in the application factory
+
+5. **Application Entry Point (`run.py`)**:
+   - Created entry point that initializes the Flask app using `create_app`
+   - Configured to select configuration based on `FLASK_CONFIG` environment variable (defaults to development)
+   - Set up to run the development server when executed directly
+
+The implementation follows the Flask application factory pattern, allowing for flexible configuration and testing. The application structure is modular with proper separation of concerns. Basic error handling and logging are in place, with environment-specific configurations.
+
+Manual verification steps have been documented, including how to:
+- Install dependencies
+- Configure environment variables
+- Run the application
+- Test the implemented endpoints
+
+The foundation is now in place for implementing the next subtask (5.2: "Implement Index Route for Homepage").
+</info added on 2025-05-06T21:26:17.174Z>
+
+## 2. Implement Index Route for Homepage [done]
+### Dependencies: 5.1
+### Description: Create the main route that serves the application homepage
+### Details:
+1. Create a routes.py file or a dedicated blueprint for main routes
+2. Implement the '/' route with a GET handler
+3. Connect the route to the appropriate template (index.html)
+4. Add any necessary context data for the template
+5. Implement basic analytics tracking for homepage visits
+6. Test the route returns 200 status code
+7. Verify correct template is rendered
+8. Check mobile responsiveness of the rendered page
+9. Test with different user agents to ensure compatibility
+<info added on 2025-05-06T21:38:42.990Z>
+1. Create a routes.py file or a dedicated blueprint for main routes
+2. Implement the '/' route with a GET handler
+3. Connect the route to the appropriate template (index.html)
+4. Add any necessary context data for the template
+5. Implement basic analytics tracking for homepage visits
+6. Test the route returns 200 status code
+7. Verify correct template is rendered
+8. Check mobile responsiveness of the rendered page
+9. Test with different user agents to ensure compatibility
+
+Implementation Plan:
+1. Create/Update `app/templates/index.html`:
+   - Create a basic HTML file with a title and placeholder heading "arXiv Paper Search"
+   - Include meta tags for proper viewport settings
+   - Use template variable for title: `{{ title if title else 'arXiv Search' }}`
+   - Add a welcome message as placeholder content
+   - Note that search form will be added in a later task
+
+2. Modify `app/routes.py`:
+   - Import `render_template` from Flask
+   - Add route handler for both '/' and '/index' on the main blueprint
+   - Return `render_template('index.html', title='Homepage')` from the handler
+   - Ensure proper connection to the application factory
+
+3. Testing Strategy:
+   - Run Flask development server locally
+   - Navigate to http://localhost:5000/ and http://localhost:5000/index
+   - Verify index.html displays correctly with proper title and heading
+   - Check server logs for 200 status code
+   - For analytics tracking, implement a simple log message for now
+   - Defer full mobile responsiveness and user agent testing until core functionality is stable
+</info added on 2025-05-06T21:38:42.990Z>
+<info added on 2025-05-06T21:39:50.060Z>
+The implementation plan has been revised to include more specific details about the Flask route implementation and template modifications:
+
+1. Modify `app/routes.py`:
+   - Import both `render_template` and `current_app` from Flask
+   - Implement the index route with dual path decorators:
+     ```python
+     @main.route('/')
+     @main.route('/index')
+     def index():
+         current_app.logger.info('Homepage accessed')
+         return render_template('index.html', title='Homepage')
+     ```
+   - This provides basic analytics tracking through application logging
+
+2. Modify `app/templates/base.html`:
+   - Add responsive viewport meta tag in the head section:
+     ```html
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     ```
+   - This ensures proper mobile rendering and responsiveness
+
+3. Modify `app/templates/index.html`:
+   - Update the heading to use Flask's template syntax with fallback:
+     ```html
+     <h1>{{ title | default('arXiv Paper Search') }}</h1>
+     ```
+   - Keep the existing welcome message as placeholder content
+   - The search form will be implemented in subtask 5.3
+
+Testing approach:
+- Start the Flask development server
+- Access both routes (/ and /index) in browser
+- Verify proper title and heading display
+- Check server logs for "Homepage accessed" message and 200 status codes
+- Basic mobile responsiveness can be tested using browser developer tools
+- Full user agent compatibility testing will be deferred until later
+
+This implementation aligns with the parent task "Implement Backend Routes" and prepares for the next subtask "Develop Search Route with Query Processing" by establishing the base route structure.
+</info added on 2025-05-06T21:39:50.060Z>
+
+## 3. Develop Search Route with Query Processing [done]
+### Dependencies: 5.1, 5.2
+### Description: Implement the search functionality route that processes user queries and renders results
+### Details:
+1. Create a '/search' route with GET and POST methods
+2. Implement query parameter extraction and validation
+3. Connect to the arXiv API wrapper to fetch search results
+4. Handle pagination of search results
+5. Implement error handling for API failures
+6. Process and format the results for template rendering
+7. Pass the formatted results to the search results template
+8. Add caching mechanism for frequent searches
+9. Test with various search queries including edge cases (empty queries, special characters)
+10. Verify proper error messages are displayed when API is unavailable
+11. Test pagination works correctly with large result sets
+<info added on 2025-05-06T21:45:35.875Z>
+1. Create a '/search' route with GET and POST methods
+2. Implement query parameter extraction and validation
+3. Connect to the arXiv API wrapper to fetch search results
+4. Handle pagination of search results
+5. Implement error handling for API failures
+6. Process and format the results for template rendering
+7. Pass the formatted results to the search results template
+8. Add caching mechanism for frequent searches
+9. Test with various search queries including edge cases (empty queries, special characters)
+10. Verify proper error messages are displayed when API is unavailable
+11. Test pagination works correctly with large result sets
+
+Implementation Plan:
+
+1. Modify `app/routes.py` for `/search` route:
+   - Import `request` from `flask` and `search_arxiv` from `app.arxiv_api`
+   - Define `@main.route('/search')` to handle GET requests
+   - Extract `query = request.args.get('query', '')` from the request
+   - If query is empty, render `index.html` or redirect to homepage
+   - Call `papers = search_arxiv(query=query, max_results=10)` with try-except block
+   - On success: render template with search results
+   - On failure: render template with appropriate error message
+
+2. Modify `app/templates/index.html` for search functionality:
+   - Add search form with GET method pointing to search route
+   - Create conditional display section for search results
+   - Display paper details (title, authors, summary, publication date, PDF link)
+   - Show "No results found" message when appropriate
+   - Display error messages when API calls fail
+
+3. Initial Testing Strategy:
+   - Test basic search with known queries (e.g., "quantum computing")
+   - Verify results display correctly
+   - Test PDF link functionality
+   - Test empty query handling
+   - Test basic error handling
+
+Note: This initial implementation focuses on core functionality. Pagination, advanced error handling, and caching will be implemented in subsequent iterations.
+</info added on 2025-05-06T21:45:35.875Z>
+<info added on 2025-05-06T22:09:42.678Z>
+The initial implementation of the search route has been completed successfully. The following components have been implemented:
+
+1. Created a `/search` GET route in `app/routes.py` that:
+   - Extracts the query parameter from the request
+   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results
+   - Handles empty queries by displaying appropriate prompts
+   - Renders search results or error messages as needed
+
+2. Updated `app/templates/index.html` to:
+   - Include a search form that submits to the search route
+   - Display search results with title, authors, summary, PDF link, and formatted published date
+   - Show a "no results found" message when appropriate
+   - Present user-friendly error messages when API calls fail
+
+3. Implemented basic error handling:
+   - Catches exceptions from the `search_papers` function
+   - Displays generic error messages to users
+   - Logs detailed error information for debugging
+
+4. Fixed several bugs during implementation:
+   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`
+   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`
+   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`
+
+5. Successfully tested:
+   - Valid search queries and results display
+   - PDF link functionality
+   - "No results found" scenario
+   - Empty search query handling
+   - Error handling with simulated API failures
+
+Remaining tasks for this subtask:
+1. Implement pagination for search results
+2. Add more detailed error handling for specific API error types
+3. Implement caching mechanism for frequent searches
+4. Add comprehensive testing for edge cases
+5. Optimize performance for large result sets
+</info added on 2025-05-06T22:09:42.678Z>
+<info added on 2025-05-06T22:09:52.462Z>
+The search route implementation has been completed with the following features:
+
+1. Created a `/search` GET route in `app/routes.py` that:
+   - Extracts the query parameter from the request
+   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results
+   - Handles empty queries by displaying appropriate prompts
+   - Renders search results or error messages as needed
+
+2. Updated `app/templates/index.html` to:
+   - Include a search form that submits to the search route
+   - Display search results with title, authors, summary, PDF link, and formatted published date
+   - Show a "no results found" message when appropriate
+   - Present user-friendly error messages when API calls fail
+
+3. Implemented basic error handling:
+   - Catches exceptions from the `search_papers` function
+   - Displays generic error messages to users
+   - Logs detailed error information for debugging
+
+4. Fixed several bugs during implementation:
+   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`
+   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`
+   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`
+
+5. Successfully tested:
+   - Valid search queries and results display
+   - PDF link functionality
+   - "No results found" scenario
+   - Empty search query handling
+   - Error handling with simulated API failures
+
+Next steps for completing this subtask:
+1. Implement pagination for search results
+2. Add more detailed error handling for specific API error types
+3. Implement caching mechanism for frequent searches
+4. Add comprehensive testing for edge cases
+5. Optimize performance for large result sets
+</info added on 2025-05-06T22:09:52.462Z>
+<info added on 2025-05-06T23:32:21.851Z>
+1. Create a '/search' route with GET and POST methods\n2. Implement query parameter extraction and validation\n3. Connect to the arXiv API wrapper to fetch search results\n4. Handle pagination of search results\n5. Implement error handling for API failures\n6. Process and format the results for template rendering\n7. Pass the formatted results to the search results template\n8. Add caching mechanism for frequent searches\n9. Test with various search queries including edge cases (empty queries, special characters)\n10. Verify proper error messages are displayed when API is unavailable\n11. Test pagination works correctly with large result sets\n<info added on 2025-05-06T21:45:35.875Z>\n1. Create a '/search' route with GET and POST methods\n2. Implement query parameter extraction and validation\n3. Connect to the arXiv API wrapper to fetch search results\n4. Handle pagination of search results\n5. Implement error handling for API failures\n6. Process and format the results for template rendering\n7. Pass the formatted results to the search results template\n8. Add caching mechanism for frequent searches\n9. Test with various search queries including edge cases (empty queries, special characters)\n10. Verify proper error messages are displayed when API is unavailable\n11. Test pagination works correctly with large result sets\n\nImplementation Plan:\n\n1. Modify `app/routes.py` for `/search` route:\n   - Import `request` from `flask` and `search_arxiv` from `app.arxiv_api`\n   - Define `@main.route('/search')` to handle GET requests\n   - Extract `query = request.args.get('query', '')` from the request\n   - If query is empty, render `index.html` or redirect to homepage\n   - Call `papers = search_arxiv(query=query, max_results=10)` with try-except block\n   - On success: render template with search results\n   - On failure: render template with appropriate error message\n\n2. Modify `app/templates/index.html` for search functionality:\n   - Add search form with GET method pointing to search route\n   - Create conditional display section for search results\n   - Display paper details (title, authors, summary, publication date, PDF link)\n   - Show \"No results found\" message when appropriate\n   - Display error messages when API calls fail\n\n3. Initial Testing Strategy:\n   - Test basic search with known queries (e.g., \"quantum computing\")\n   - Verify results display correctly\n   - Test PDF link functionality\n   - Test empty query handling\n   - Test basic error handling\n\nNote: This initial implementation focuses on core functionality. Pagination, advanced error handling, and caching will be implemented in subsequent iterations.\n</info added on 2025-05-06T21:45:35.875Z>\n<info added on 2025-05-06T22:09:42.678Z>\nThe initial implementation of the search route has been completed successfully. The following components have been implemented:\n\n1. Created a `/search` GET route in `app/routes.py` that:\n   - Extracts the query parameter from the request\n   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results\n   - Handles empty queries by displaying appropriate prompts\n   - Renders search results or error messages as needed\n\n2. Updated `app/templates/index.html` to:\n   - Include a search form that submits to the search route\n   - Display search results with title, authors, summary, PDF link, and formatted published date\n   - Show a \"no results found\" message when appropriate\n   - Present user-friendly error messages when API calls fail\n\n3. Implemented basic error handling:\n   - Catches exceptions from the `search_papers` function\n   - Displays generic error messages to users\n   - Logs detailed error information for debugging\n\n4. Fixed several bugs during implementation:\n   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`\n   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`\n   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`\n\n5. Successfully tested:\n   - Valid search queries and results display\n   - PDF link functionality\n   - \"No results found\" scenario\n   - Empty search query handling\n   - Error handling with simulated API failures\n\nRemaining tasks for this subtask:\n1. Implement pagination for search results\n2. Add more detailed error handling for specific API error types\n3. Implement caching mechanism for frequent searches\n4. Add comprehensive testing for edge cases\n5. Optimize performance for large result sets\n</info added on 2025-05-06T22:09:42.678Z>\n<info added on 2025-05-06T22:09:52.462Z>\nThe search route implementation has been completed with the following features:\n\n1. Created a `/search` GET route in `app/routes.py` that:\n   - Extracts the query parameter from the request\n   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results\n   - Handles empty queries by displaying appropriate prompts\n   - Renders search results or error messages as needed\n\n2. Updated `app/templates/index.html` to:\n   - Include a search form that submits to the search route\n   - Display search results with title, authors, summary, PDF link, and formatted published date\n   - Show a \"no results found\" message when appropriate\n   - Present user-friendly error messages when API calls fail\n\n3. Implemented basic error handling:\n   - Catches exceptions from the `search_papers` function\n   - Displays generic error messages to users\n   - Logs detailed error information for debugging\n\n4. Fixed several bugs during implementation:\n   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`\n   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`\n   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`\n\n5. Successfully tested:\n   - Valid search queries and results display\n   - PDF link functionality\n   - \"No results found\" scenario\n   - Empty search query handling\n   - Error handling with simulated API failures\n\nNext steps for completing this subtask:\n1. Implement pagination for search results\n2. Add more detailed error handling for specific API error types\n3. Implement caching mechanism for frequent searches\n4. Add comprehensive testing for edge cases\n5. Optimize performance for large result sets\n</info added on 2025-05-06T22:09:52.462Z>\n\nPagination Implementation Plan:\n\n1. Configuration Setup:\n   - Add `RESULTS_PER_PAGE = 10` to `config.py` to define the number of results shown per page
+   - Ensure this configuration is accessible through the Flask app configuration
+
+2. API Wrapper Modifications in `app/arxiv_api.py`:\n   - Update the `NAMESPACES` dictionary to include the OpenSearch namespace: `'opensearch': 'http://a9.com/-/spec/opensearch/1.1/'`
+   - Modify the `parse_arxiv_xml` function to extract total results count:
+     - Add code to find and parse the `opensearch:totalResults` element
+     - Convert the total results to an integer
+     - Return a dictionary with both papers list and total count: `{'papers': parsed_papers, 'total_results': total_results}`
+   - Update the `search_papers` function to:
+     - Accept `start_index` parameter (default 0)
+     - Pass this parameter to the arXiv API call
+     - Return the dictionary structure from `parse_arxiv_xml`
+
+3. Route Handler Updates in `app/routes.py`:\n   - Import the `math` module for ceiling calculations
+   - Modify the `search()` function to:
+     - Extract page number: `page = request.args.get('page', 1, type=int)`
+     - Get results per page from config: `results_per_page = current_app.config['RESULTS_PER_PAGE']`
+     - Calculate start index: `start_index = (page - 1) * results_per_page`
+     - Update API call: `result = search_papers(query=query, start=start_index, count=results_per_page)`
+     - Extract papers and total results: `papers = result['papers']` and `total_results = result['total_results']`
+     - Calculate total pages: `total_pages = math.ceil(total_results / results_per_page)`
+     - Pass all pagination data to template: `papers`, `query`, `page`, `total_pages`, `total_results`
+
+4. Template Updates in `app/templates/index.html`:\n   - Add a pagination information section:
+     - Display current page info: "Page {{ page }} of {{ total_pages }}"
+     - Show result range: "Showing results {{ (page-1) * results_per_page + 1 }}-{{ min(page * results_per_page, total_results) }} of {{ total_results }}"
+   - Add pagination controls:
+     - Previous page link: `{{ url_for('main.search', query=query, page=page-1) }}` with `{% if page <= 1 %}disabled{% endif %}`
+     - Next page link: `{{ url_for('main.search', query=query, page=page+1) }}` with `{% if page >= total_pages %}disabled{% endif %}`
+     - Only display pagination controls if `{% if total_pages > 1 %}`
+   - Style pagination controls with appropriate CSS classes
+
+5. Testing Strategy for Pagination:\n   - Test with queries known to return large result sets (e.g., "physics", "machine learning")
+   - Verify first page displays correctly with "Next" enabled and "Previous" disabled
+   - Navigate to page 2 and verify both "Next" and "Previous" are enabled
+   - Navigate to the last page and verify "Next" is disabled and "Previous" is enabled
+   - Verify page information and result counts are accurate
+   - Test edge cases:
+     - Manually entering invalid page numbers in URL
+     - Very large result sets (1000+ papers)
+     - Queries with exactly one page of results
+   - Verify performance with different page sizes
+</info added on 2025-05-06T23:32:21.851Z>
+<info added on 2025-05-06T23:57:34.910Z>
+1. Create a '/search' route with GET and POST methods\n2. Implement query parameter extraction and validation\n3. Connect to the arXiv API wrapper to fetch search results\n4. Handle pagination of search results\n5. Implement error handling for API failures\n6. Process and format the results for template rendering\n7. Pass the formatted results to the search results template\n8. Add caching mechanism for frequent searches\n9. Test with various search queries including edge cases (empty queries, special characters)\n10. Verify proper error messages are displayed when API is unavailable\n11. Test pagination works correctly with large result sets\n<info added on 2025-05-06T21:45:35.875Z>\n1. Create a '/search' route with GET and POST methods\n2. Implement query parameter extraction and validation\n3. Connect to the arXiv API wrapper to fetch search results\n4. Handle pagination of search results\n5. Implement error handling for API failures\n6. Process and format the results for template rendering\n7. Pass the formatted results to the search results template\n8. Add caching mechanism for frequent searches\n9. Test with various search queries including edge cases (empty queries, special characters)\n10. Verify proper error messages are displayed when API is unavailable\n11. Test pagination works correctly with large result sets\n\nImplementation Plan:\n\n1. Modify `app/routes.py` for `/search` route:\n   - Import `request` from `flask` and `search_arxiv` from `app.arxiv_api`\n   - Define `@main.route('/search')` to handle GET requests\n   - Extract `query = request.args.get('query', '')` from the request\n   - If query is empty, render `index.html` or redirect to homepage\n   - Call `papers = search_arxiv(query=query, max_results=10)` with try-except block\n   - On success: render template with search results\n   - On failure: render template with appropriate error message\n\n2. Modify `app/templates/index.html` for search functionality:\n   - Add search form with GET method pointing to search route\n   - Create conditional display section for search results\n   - Display paper details (title, authors, summary, publication date, PDF link)\n   - Show \"No results found\" message when appropriate\n   - Display error messages when API calls fail\n\n3. Initial Testing Strategy:\n   - Test basic search with known queries (e.g., \"quantum computing\")\n   - Verify results display correctly\n   - Test PDF link functionality\n   - Test empty query handling\n   - Test basic error handling\n\nNote: This initial implementation focuses on core functionality. Pagination, advanced error handling, and caching will be implemented in subsequent iterations.\n</info added on 2025-05-06T21:45:35.875Z>\n<info added on 2025-05-06T22:09:42.678Z>\nThe initial implementation of the search route has been completed successfully. The following components have been implemented:\n\n1. Created a `/search` GET route in `app/routes.py` that:\n   - Extracts the query parameter from the request\n   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results\n   - Handles empty queries by displaying appropriate prompts\n   - Renders search results or error messages as needed\n\n2. Updated `app/templates/index.html` to:\n   - Include a search form that submits to the search route\n   - Display search results with title, authors, summary, PDF link, and formatted published date\n   - Show a \"no results found\" message when appropriate\n   - Present user-friendly error messages when API calls fail\n\n3. Implemented basic error handling:\n   - Catches exceptions from the `search_papers` function\n   - Displays generic error messages to users\n   - Logs detailed error information for debugging\n\n4. Fixed several bugs during implementation:\n   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`\n   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`\n   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`\n\n5. Successfully tested:\n   - Valid search queries and results display\n   - PDF link functionality\n   - \"No results found\" scenario\n   - Empty search query handling\n   - Error handling with simulated API failures\n\nRemaining tasks for this subtask:\n1. Implement pagination for search results\n2. Add more detailed error handling for specific API error types\n3. Implement caching mechanism for frequent searches\n4. Add comprehensive testing for edge cases\n5. Optimize performance for large result sets\n</info added on 2025-05-06T22:09:42.678Z>\n<info added on 2025-05-06T22:09:52.462Z>\nThe search route implementation has been completed with the following features:\n\n1. Created a `/search` GET route in `app/routes.py` that:\n   - Extracts the query parameter from the request\n   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results\n   - Handles empty queries by displaying appropriate prompts\n   - Renders search results or error messages as needed\n\n2. Updated `app/templates/index.html` to:\n   - Include a search form that submits to the search route\n   - Display search results with title, authors, summary, PDF link, and formatted published date\n   - Show a \"no results found\" message when appropriate\n   - Present user-friendly error messages when API calls fail\n\n3. Implemented basic error handling:\n   - Catches exceptions from the `search_papers` function\n   - Displays generic error messages to users\n   - Logs detailed error information for debugging\n\n4. Fixed several bugs during implementation:\n   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`\n   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`\n   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`\n\n5. Successfully tested:\n   - Valid search queries and results display\n   - PDF link functionality\n   - \"No results found\" scenario\n   - Empty search query handling\n   - Error handling with simulated API failures\n\nNext steps for completing this subtask:\n1. Implement pagination for search results\n2. Add more detailed error handling for specific API error types\n3. Implement caching mechanism for frequent searches\n4. Add comprehensive testing for edge cases\n5. Optimize performance for large result sets\n</info added on 2025-05-06T22:09:52.462Z>\n<info added on 2025-05-06T23:32:21.851Z>\n1. Create a '/search' route with GET and POST methods\\n2. Implement query parameter extraction and validation\\n3. Connect to the arXiv API wrapper to fetch search results\\n4. Handle pagination of search results\\n5. Implement error handling for API failures\\n6. Process and format the results for template rendering\\n7. Pass the formatted results to the search results template\\n8. Add caching mechanism for frequent searches\\n9. Test with various search queries including edge cases (empty queries, special characters)\\n10. Verify proper error messages are displayed when API is unavailable\\n11. Test pagination works correctly with large result sets\\n<info added on 2025-05-06T21:45:35.875Z>\\n1. Create a '/search' route with GET and POST methods\\n2. Implement query parameter extraction and validation\\n3. Connect to the arXiv API wrapper to fetch search results\\n4. Handle pagination of search results\\n5. Implement error handling for API failures\\n6. Process and format the results for template rendering\\n7. Pass the formatted results to the search results template\\n8. Add caching mechanism for frequent searches\\n9. Test with various search queries including edge cases (empty queries, special characters)\\n10. Verify proper error messages are displayed when API is unavailable\\n11. Test pagination works correctly with large result sets\\n\\nImplementation Plan:\\n\\n1. Modify `app/routes.py` for `/search` route:\\n   - Import `request` from `flask` and `search_arxiv` from `app.arxiv_api`\\n   - Define `@main.route('/search')` to handle GET requests\\n   - Extract `query = request.args.get('query', '')` from the request\\n   - If query is empty, render `index.html` or redirect to homepage\\n   - Call `papers = search_arxiv(query=query, max_results=10)` with try-except block\\n   - On success: render template with search results\\n   - On failure: render template with appropriate error message\\n\\n2. Modify `app/templates/index.html` for search functionality:\\n   - Add search form with GET method pointing to search route\\n   - Create conditional display section for search results\\n   - Display paper details (title, authors, summary, publication date, PDF link)\\n   - Show \\\"No results found\\\" message when appropriate\\n   - Display error messages when API calls fail\\n\\n3. Initial Testing Strategy:\\n   - Test basic search with known queries (e.g., \\\"quantum computing\\\")\\n   - Verify results display correctly\\n   - Test PDF link functionality\\n   - Test empty query handling\\n   - Test basic error handling\\n\\nNote: This initial implementation focuses on core functionality. Pagination, advanced error handling, and caching will be implemented in subsequent iterations.\\n</info added on 2025-05-06T21:45:35.875Z>\\n<info added on 2025-05-06T22:09:42.678Z>\\nThe initial implementation of the search route has been completed successfully. The following components have been implemented:\\n\\n1. Created a `/search` GET route in `app/routes.py` that:\\n   - Extracts the query parameter from the request\\n   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results\\n   - Handles empty queries by displaying appropriate prompts\\n   - Renders search results or error messages as needed\\n\\n2. Updated `app/templates/index.html` to:\\n   - Include a search form that submits to the search route\\n   - Display search results with title, authors, summary, PDF link, and formatted published date\\n   - Show a \\\"no results found\\\" message when appropriate\\n   - Present user-friendly error messages when API calls fail\\n\\n3. Implemented basic error handling:\\n   - Catches exceptions from the `search_papers` function\\n   - Displays generic error messages to users\\n   - Logs detailed error information for debugging\\n\\n4. Fixed several bugs during implementation:\\n   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`\\n   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`\\n   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`\\n\\n5. Successfully tested:\\n   - Valid search queries and results display\\n   - PDF link functionality\\n   - \\\"No results found\\\" scenario\\n   - Empty search query handling\\n   - Error handling with simulated API failures\\n\\nRemaining tasks for this subtask:\\n1. Implement pagination for search results\\n2. Add more detailed error handling for specific API error types\\n3. Implement caching mechanism for frequent searches\\n4. Add comprehensive testing for edge cases\\n5. Optimize performance for large result sets\\n</info added on 2025-05-06T22:09:42.678Z>\\n<info added on 2025-05-06T22:09:52.462Z>\\nThe search route implementation has been completed with the following features:\\n\\n1. Created a `/search` GET route in `app/routes.py` that:\\n   - Extracts the query parameter from the request\\n   - Calls the `search_papers` function from `app.arxiv_api` with a default of 10 results\\n   - Handles empty queries by displaying appropriate prompts\\n   - Renders search results or error messages as needed\\n\\n2. Updated `app/templates/index.html` to:\\n   - Include a search form that submits to the search route\\n   - Display search results with title, authors, summary, PDF link, and formatted published date\\n   - Show a \\\"no results found\\\" message when appropriate\\n   - Present user-friendly error messages when API calls fail\\n\\n3. Implemented basic error handling:\\n   - Catches exceptions from the `search_papers` function\\n   - Displays generic error messages to users\\n   - Logs detailed error information for debugging\\n\\n4. Fixed several bugs during implementation:\\n   - Corrected `ImportError` by changing `search_arxiv` to `search_papers`\\n   - Resolved Jinja2 template error by ensuring `published_date` is properly converted to a datetime object in `app/models.py:ArxivPaper.__post_init__`\\n   - Fixed incorrect PDF links by changing template references from `paper.pdf_url` to `paper.pdf_link`\\n\\n5. Successfully tested:\\n   - Valid search queries and results display\\n   - PDF link functionality\\n   - \\\"No results found\\\" scenario\\n   - Empty search query handling\\n   - Error handling with simulated API failures\\n\\nNext steps for completing this subtask:\\n1. Implement pagination for search results\\n2. Add more detailed error handling for specific API error types\\n3. Implement caching mechanism for frequent searches\\n4. Add comprehensive testing for edge cases\\n5. Optimize performance for large result sets\\n</info added on 2025-05-06T22:09:52.462Z>\\n\\nPagination Implementation Plan:\\n\\n1. Configuration Setup:\\n   - Add `RESULTS_PER_PAGE = 10` to `config.py` to define the number of results shown per page\n   - Ensure this configuration is accessible through the Flask app configuration\n\n2. API Wrapper Modifications in `app/arxiv_api.py`:\\n   - Update the `NAMESPACES` dictionary to include the OpenSearch namespace: `'opensearch': 'http://a9.com/-/spec/opensearch/1.1/'`\n   - Modify the `parse_arxiv_xml` function to extract total results count:\n     - Add code to find and parse the `opensearch:totalResults` element\n     - Convert the total results to an integer\n     - Return a dictionary with both papers list and total count: `{'papers': parsed_papers, 'total_results': total_results}`\n   - Update the `search_papers` function to:\n     - Accept `start_index` parameter (default 0)\n     - Pass this parameter to the arXiv API call\n     - Return the dictionary structure from `parse_arxiv_xml`\n\n3. Route Handler Updates in `app/routes.py`:\\n   - Import the `math` module for ceiling calculations\n   - Modify the `search()` function to:\n     - Extract page number: `page = request.args.get('page', 1, type=int)`\n     - Get results per page from config: `results_per_page = current_app.config['RESULTS_PER_PAGE']`\n     - Calculate start index: `start_index = (page - 1) * results_per_page`\n     - Update API call: `result = search_papers(query=query, start=start_index, count=results_per_page)`\n     - Extract papers and total results: `papers = result['papers']` and `total_results = result['total_results']`\n     - Calculate total pages: `total_pages = math.ceil(total_results / results_per_page)`\n     - Pass all pagination data to template: `papers`, `query`, `page`, `total_pages`, `total_results`\n\n4. Template Updates in `app/templates/index.html`:\\n   - Add a pagination information section:\n     - Display current page info: \"Page {{ page }} of {{ total_pages }}\"\n     - Show result range: \"Showing results {{ (page-1) * results_per_page + 1 }}-{{ min(page * results_per_page, total_results) }} of {{ total_results }}\"\n   - Add pagination controls:\n     - Previous page link: `{{ url_for('main.search', query=query, page=page-1) }}` with `{% if page <= 1 %}disabled{% endif %}`\n     - Next page link: `{{ url_for('main.search', query=query, page=page+1) }}` with `{% if page >= total_pages %}disabled{% endif %}`\n     - Only display pagination controls if `{% if total_pages > 1 %}`\n   - Style pagination controls with appropriate CSS classes\n\n5. Testing Strategy for Pagination:\\n   - Test with queries known to return large result sets (e.g., \"physics\", \"machine learning\")\n   - Verify first page displays correctly with \"Next\" enabled and \"Previous\" disabled\n   - Navigate to page 2 and verify both \"Next\" and \"Previous\" are enabled\n   - Navigate to the last page and verify \"Next\" is disabled and \"Previous\" is enabled\n   - Verify page information and result counts are accurate\n   - Test edge cases:\n     - Manually entering invalid page numbers in URL\n     - Very large result sets (1000+ papers)\n     - Queries with exactly one page of results\n   - Verify performance with different page sizes\n</info added on 2025-05-06T23:32:21.851Z>\n\nPagination has been successfully implemented for the search results. The following changes have been completed:\n\n1. Updated `app/routes.py` to handle pagination:\n   - Added code to extract the 'page' parameter from request arguments with a default value of 1\n   - Utilized the existing `RESULTS_PER_PAGE` configuration from `config.py`\n   - Implemented calculation of `start_index` based on the current page number\n   - Modified the `search_papers` function call to include pagination parameters\n   - Added calculation of total pages based on total results and results per page\n   - Enhanced the template context to include pagination data: `page`, `total_pages`, `total_results`, and `results_per_page`\n\n2. Enhanced `app/templates/index.html` with pagination UI:\n   - Added a pagination information section showing current page and total pages\n   - Implemented result count display showing which results are currently being viewed\n   - Created navigation controls with 'Previous' and 'Next' buttons\n   - Added conditional logic to disable 'Previous' button on the first page\n   - Added conditional logic to disable 'Next' button on the last page\n   - Ensured pagination controls only appear when there are multiple pages of results\n   - Applied appropriate styling to make the pagination controls user-friendly\n\n3. Verified that the existing codebase already supported pagination:\n   - Confirmed `config.py` already contained the `RESULTS_PER_PAGE` setting\n   - Verified that `app/arxiv_api.py` was already structured to support pagination parameters\n   - Confirmed the API wrapper was already returning total results count needed for pagination\n\n4. Tested the pagination implementation with various queries:\n   - Verified navigation between pages works correctly\n   - Confirmed page information and result counts display accurately\n   - Tested that 'Previous' and 'Next' buttons enable/disable appropriately\n   - Checked that URL parameters are correctly maintained when navigating between pages\n\nRemaining tasks for this subtask:\n1. Implement more detailed error handling for specific API error types\n2. Add caching mechanism for frequent searches to improve performance\n3. Conduct comprehensive testing with edge cases (very large result sets, invalid page numbers)\n4. Optimize performance for large result sets\n5. Consider adding more advanced pagination features (jump to specific page, show multiple page numbers)
+</info added on 2025-05-06T23:57:34.910Z>
+<info added on 2025-05-07T00:01:01.089Z>
+Caching Implementation and Edge Case Testing Plan:
+
+1. Caching Mechanism Implementation:
+   - Install Flask-Caching by adding it to requirements.txt
+   - Initialize the cache in app/__init__.py:
+     ```python
+     from flask_caching import Cache
+     cache = Cache()
+     
+     def create_app(config_class=Config):
+         app = Flask(__name__)
+         # Existing configuration
+         
+         # Initialize cache with SimpleCache backend and 5-minute timeout
+         cache.init_app(app, config={
+             'CACHE_TYPE': 'SimpleCache',
+             'CACHE_DEFAULT_TIMEOUT': 300
+         })
+     ```
+   - Apply caching to the search_papers function in app/arxiv_api.py:
+     ```python
+     from app import cache
+     
+     @cache.memoize()
+     def search_papers(query, start=0, count=10):
+         # Existing function code
+     ```
+   - Add cache configuration options to config.py:
+     ```python
+     CACHE_TYPE = 'SimpleCache'
+     CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes
+     CACHE_THRESHOLD = 500  # Maximum number of items to store in cache
+     ```
+   - Add cache debugging/monitoring in the search route:
+     ```python
+     # Add to routes.py search function
+     current_app.logger.info(f"Cache stats: {cache.get_stats()}")
+     ```
+
+2. Edge Case Testing Strategy:
+   - Create/update test files:
+     - tests/test_routes.py for testing the search route
+     - tests/test_arxiv_api.py for testing the API wrapper
+     - tests/test_caching.py for testing the caching functionality
+   
+   - Query Edge Cases to Test:
+     - Empty query: ""
+     - Whitespace-only query: "   "
+     - Very long query (1000+ characters)
+     - Special characters: "quantum&physics+theory?!"
+     - Non-ASCII characters: "量子コンピューティング"
+     - SQL injection attempts: "quantum'; DROP TABLE papers;--"
+     - HTML/script injection: "<script>alert('XSS')</script>"
+   
+   - Pagination Edge Cases to Test:
+     - page=0 (should redirect to page 1)
+     - page=-1 (should redirect to page 1)
+     - page=999999 (beyond available results)
+     - page="abc" (non-integer)
+     - RESULTS_PER_PAGE=1 (minimum)
+     - RESULTS_PER_PAGE=100 (maximum)
+   
+   - API Response Edge Cases (using mocks):
+     - HTTP 500 error from arXiv API
+     - HTTP 429 (rate limit) error
+     - Empty result set (0 papers)
+     - Malformed XML response
+     - Missing totalResults element
+     - Very large totalResults (10,000+)
+     - Inconsistent totalResults vs. actual results
+   
+   - Caching Tests:
+     - Verify identical queries use cache (check response time)
+     - Verify cache expires after timeout
+     - Verify different pagination of same query uses cache
+     - Verify cache handles special characters correctly
+     - Test cache size limits with many different queries
+
+3. Test Implementation Details:
+   - Use pytest fixtures for common setup:
+     ```python
+     @pytest.fixture
+     def mock_arxiv_api(mocker):
+         return mocker.patch('app.arxiv_api.search_papers')
+     ```
+   
+   - Use parametrized tests for edge cases:
+     ```python
+     @pytest.mark.parametrize('query', [
+         '',
+         '   ',
+         'a' * 1000,
+         'quantum&physics+theory?!',
+         '量子コンピューティング',
+         "quantum'; DROP TABLE papers;--",
+         "<script>alert('XSS')</script>"
+     ])
+     def test_search_query_edge_cases(client, mock_arxiv_api, query):
+         # Test implementation
+     ```
+   
+   - Test caching behavior:
+     ```python
+     def test_search_caching(client, mock_arxiv_api):
+         # Configure mock to return consistent results
+         # Make identical requests and verify cache is used
+         # Check response times improve on subsequent requests
+     ```
+   
+   - Test error handling:
+     ```python
+     def test_search_api_errors(client, mock_arxiv_api):
+         # Configure mock to raise exceptions
+         # Verify appropriate error messages are displayed
+     ```
+
+4. Implementation Timeline:
+   - Day 1: Set up Flask-Caching and implement basic caching
+   - Day 2: Write tests for query and pagination edge cases
+   - Day 3: Write tests for API response edge cases and caching
+   - Day 4: Fix any issues identified during testing and optimize
+
+5. Performance Considerations:
+   - Monitor memory usage with caching enabled
+   - Consider Redis cache for production if SimpleCache shows memory issues
+   - Add cache statistics logging to identify cache hit/miss rates
+   - Consider adding cache warmup for popular searches
+</info added on 2025-05-07T00:01:01.089Z>
+<info added on 2025-05-07T00:24:51.457Z>
+Edge case testing for the search route and caching mechanism has been successfully completed. The following tests have been implemented and are now passing:
+
+1. Query Edge Cases:
+   - Empty queries: Verified that empty queries redirect to homepage with appropriate message
+   - Whitespace-only queries: Confirmed these are treated as empty queries
+   - Very long queries (1000+ characters): Tested handling of extremely long search terms
+   - Special characters: Verified proper handling of queries containing "&", "+", "?", "!" and other special characters
+   - Non-ASCII characters: Confirmed support for international characters like "量子コンピューティング"
+   - Potential SQL injection attempts: Verified that these are properly sanitized
+   - HTML/script injection attempts: Confirmed that potential XSS vectors are escaped
+
+2. Pagination Edge Cases:
+   - Invalid page numbers (page=0, page=-1): Verified these redirect to page 1
+   - Non-integer page values (page="abc"): Confirmed these are handled gracefully
+   - Out-of-bounds pages (beyond available results): Tested that these show appropriate messaging
+   - Very large result sets: Verified pagination works correctly with 1000+ results
+
+3. API Response Edge Cases:
+   - HTTP 500 errors from arXiv API: Confirmed proper error handling and user messaging
+   - HTTP 429 (rate limit) errors: Verified appropriate retry logic and user feedback
+   - Network timeouts and connection errors: Tested graceful degradation
+   - Empty result sets (0 papers): Confirmed appropriate "no results" messaging
+   - Malformed XML responses: Verified robust error handling
+   - Missing or inconsistent totalResults elements: Tested fallback behavior
+   - Very large totalResults values: Confirmed pagination calculation remains accurate
+
+4. Caching Behavior:
+   - Cache hits for identical queries: Verified improved response times on subsequent requests
+   - Distinct cache entries for different pagination of same query: Confirmed correct behavior
+   - Proper caching of queries with special characters: Verified cache keys are properly generated
+   - Cache expiration: Basic tests confirm cache entries expire after the configured timeout
+
+The tests are primarily located in `tests/test_routes.py` and `tests/test_caching.py`. Some more complex tests for varying RESULTS_PER_PAGE configuration and exhaustive cache expiration/size limit testing have been deferred as they would require more complex test infrastructure.
+
+Next steps for this subtask:
+1. Complete the remaining detailed error handling for specific API error types
+2. Optimize performance for large result sets
+3. Consider implementing more advanced pagination features (jump to specific page, show multiple page numbers)
+4. Document the search route API and caching behavior for future developers
+</info added on 2025-05-07T00:24:51.457Z>
+

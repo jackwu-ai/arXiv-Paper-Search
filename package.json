@@ -1,0 +1,26 @@
+{
+  "name": "research-paper",
+  "version": "1.0.0",
+  "description": "A simple web application to search for research papers on arXiv.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.14",
+    "typescript": "^5.8.3"
+  }
+}

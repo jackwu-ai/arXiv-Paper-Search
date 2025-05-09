@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if query %}
+        Search Results for "{{ query }}" - arXiv Paper Search
+    {% else %}
+        arXiv Paper Search
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div id="search-content-area">
+    <h1>{{ title | default('arXiv Paper Search') }}</h1>
+    
+    <form method="GET" action="{{ url_for('main.search') }}" style="margin-bottom: 20px;" id="search-form">
+        <input type="text" name="query" placeholder="Search arXiv" value="{{ query | default('') }}" size="40" id="search-query-input">
+        <input type="hidden" name="page" value="1"> {# Always search from page 1 for new queries #}
+        <button type="submit">Search</button>
+    </form>
+    <div id="js-search-error-message" class="alert alert-danger" role="alert" style="display:none;"></div>
+
+    <div id="search-results-block">
+    {% if error_message %}
+        <div class="alert error-message" role="alert">
+            <p><strong>Error:</strong> {{ error_message }}</p>
+        </div>
+    {% endif %}
+
+    {% if query and not error_message %}
+        {# This block will show if a query was made and there was no overriding error #}
+        {% if papers is defined and papers %}
+            <h2>Search Results for "{{ query }}"</h2>
+            <p>
+                Showing results 
+                {% if total_results > 0 %}
+                    {{ ( (page - 1) * results_per_page ) + 1 }} -
+                    {{ min(page * results_per_page, total_results) }}
+                {% else %}
+                    0
+                {% endif %}
+                of {{ total_results }} (Page {{ page }} of {{ total_pages if total_pages > 0 else 1 }})
+            </p>
+            <ul style="list-style-type: none; padding-left: 0;">
+            {% for paper in papers %}
+                <li class="paper-item">
+                    <h3><a href="{{ paper.pdf_link }}" target="_blank" rel="noopener noreferrer">{{ paper.title | sanitize_html | highlight(query) | safe }}</a></h3>
+                    <div class="paper-meta">
+                        <span class="paper-authors"><strong>Authors:</strong> {{ paper.authors | format_authors(5) | safe if paper.authors else 'N/A' }}</span>
+                        <span class="paper-date"><strong>Published:</strong> {{ paper.published_date | format_date if paper.published_date else 'N/A' }}</span>
+                    </div>
+                    <div class="paper-summary-container">
+                        <p class="paper-summary paper-summary-short">
+                            <strong>Summary:</strong>
+                            <span class="summary-content">{{ paper.summary | sanitize_html | highlight(query) | truncate_text(150) | safe if paper.summary else 'Summary not available.' }}</span>
+                            {% if paper.summary and (paper.summary | length > 150 or (paper.summary | truncate_text(150) | length < paper.summary | length)) %}
+                                <a href="#" class="read-more-link" aria-label="Read more summary for {{ paper.title }}">Read more</a>
+                            {% endif %}
+                        </p>
+                        {% if paper.summary and (paper.summary | length > 150 or (paper.summary | truncate_text(150) | length < paper.summary | length)) %}
+                        <p class="paper-summary paper-summary-full" style="display:none;">
+                            <strong>Summary:</strong>
+                            <span class="summary-content">{{ paper.summary | sanitize_html | highlight(query) | safe }}</span>
+                            <a href="#" class="read-less-link" aria-label="Read less summary for {{ paper.title }}">Read less</a>
+                        </p>
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+
+            {# Pagination Controls #}
+            {% if total_pages is defined and total_pages > 1 %}
+            <nav aria-label="Page navigation" class="pagination-nav">
+                <ul class="pagination justify-content-center">
+                    {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.search', query=query, page=page-1) }}">&laquo; Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo; Previous</span>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item disabled">
+                        <span class="page-link current">Page {{ page }} of {{ total_pages }}</span>
+                    </li>
+
+                    {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.search', query=query, page=page+1) }}">Next &raquo;</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next &raquo;</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% elif query %} {# Query was made, but no papers found and no error_message from route #}
+            <h2>Search Results for "{{ query }}"</h2>
+            <p>No results found for "{{ query }}". Please try different keywords.</p>
+            {% if total_results is defined and total_results == 0 %}
+                <p>(Searched {{ total_results }} total items)</p> {# Confirming search was done #}
+            {% endif %}
+        {% endif %}
+    {% elif not query and request.args.get('query') is not none %} {# Explicitly empty search query submitted #}
+         <p>Please enter a search term.</p>
+    {% else %}
+        {# Initial page load, before any search or if query was not in args #}
+        <p>Welcome to the arXiv Paper Search. Please enter your query above.</p>
+    {% endif %}
+    </div> {# End of search-results-block #}
+</div> {# End of search-content-area #}
+{% endblock %} 

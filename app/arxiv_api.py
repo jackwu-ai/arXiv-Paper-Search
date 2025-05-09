@@ -3,8 +3,16 @@ import time
 import logging
 from urllib.parse import urlencode
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import List, Optional, Union, Dict
 from .models import ArxivPaper
+from .exceptions import (
+    ArxivAPIException,
+    NetworkException,
+    ParsingException,
+    ValidationException
+)
+from flask import current_app
+from app import cache
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +25,8 @@ MAX_RETRIES = 3 # Maximum number of retries for a request
 
 NAMESPACES = {
     'atom': 'http://www.w3.org/2005/Atom',
-    'arxiv': 'http://arxiv.org/schemas/atom'
+    'arxiv': 'http://arxiv.org/schemas/atom',
+    'opensearch': 'http://a9.com/-/spec/opensearch/1.1/'
 }
 
 def construct_query_url(search_query: str = None, id_list: list = None, start: int = 0, max_results: int = 10, sortBy: str = "relevance", sortOrder: str = "descending") -> str:
@@ -33,14 +42,18 @@ def construct_query_url(search_query: str = None, id_list: list = None, start: i
         sortOrder: The sorting order ('ascending' or 'descending').
 
     Returns:
-        The fully formed query URL or None if parameters are invalid.
+        The fully formed query URL.
+    Raises:
+        ValidationException: If parameters are invalid.
     """
     if not search_query and not id_list:
-        logger.error("Either search_query or id_list must be provided.")
-        return None
+        msg = "Either search_query or id_list must be provided."
+        logger.error(msg)
+        raise ValidationException(msg)
     if search_query and id_list:
-        logger.error("Cannot use both search_query and id_list simultaneously.") # As per arXiv API docs, these are mutually exclusive in practice for typical use cases
-        return None
+        msg = "Cannot use both search_query and id_list simultaneously."
+        logger.error(msg)
+        raise ValidationException(msg)
 
     query_params = {
         "start": start,
@@ -57,7 +70,7 @@ def construct_query_url(search_query: str = None, id_list: list = None, start: i
     encoded_params = urlencode(query_params)
     return f"{ARXIV_API_URL}?{encoded_params}"
 
-def make_api_request(query_url: str):
+def make_api_request(query_url: str) -> str:
     """
     Makes a request to the arXiv API, handling retries and rate limiting.
 
@@ -65,57 +78,80 @@ def make_api_request(query_url: str):
         query_url: The URL to request.
 
     Returns:
-        The API response text (XML) or None if an error occurs.
+        The API response text (XML).
+    Raises:
+        NetworkException: If the request times out after all retries, or for rate limit errors / server errors.
+        ArxivAPIException: If a client error (4xx, not 429) occurs or for other request-related errors.
     """
+    last_exception = None
     for attempt in range(MAX_RETRIES):
         try:
             logger.info(f"Attempting to fetch URL (attempt {attempt + 1}/{MAX_RETRIES}): {query_url}")
-            time.sleep(REQUEST_THROTTLE_SECONDS) # Adhere to rate limits before making the request
+            time.sleep(REQUEST_THROTTLE_SECONDS) 
             response = requests.get(query_url, timeout=DEFAULT_TIMEOUT_SECONDS)
-            response.raise_for_status()  # Raises an HTTPError for bad responses (4XX or 5XX)
+            response.raise_for_status()  
             logger.info(f"Successfully fetched URL: {query_url}")
             return response.text
         except requests.exceptions.HTTPError as e:
+            last_exception = e
             logger.error(f"HTTP error occurred: {e} - Status code: {e.response.status_code}")
-            # Specific handling for rate limiting if arXiv uses a specific status code like 429
-            if e.response.status_code == 429: # Too Many Requests
-                sleep_time = REQUEST_THROTTLE_SECONDS * (attempt + 2) # Exponential backoff component
+            if e.response.status_code == 429:
+                if attempt == MAX_RETRIES - 1:
+                    raise NetworkException(message="arXiv API rate limit exceeded. Please try again later.", original_exception=e, status_code=429)
+                sleep_time = REQUEST_THROTTLE_SECONDS * (attempt + 2) 
                 logger.warning(f"Rate limit likely hit. Sleeping for {sleep_time:.2f} seconds.")
                 time.sleep(sleep_time)
-            elif e.response.status_code >= 500: # Server-side errors, worth retrying
+            elif e.response.status_code >= 500:
+                if attempt == MAX_RETRIES - 1:
+                    raise NetworkException(message=f"arXiv API server error.", original_exception=e, status_code=e.response.status_code)
                 logger.warning(f"Server error ({e.response.status_code}). Retrying after a short delay...")
-            else: # Client-side errors (4xx other than 429) are unlikely to succeed on retry
+            else: # Client-side errors (4xx other than 429)
                 logger.error(f"Client error ({e.response.status_code}). Not retrying.")
-                return None
-        except requests.exceptions.Timeout:
+                raise ArxivAPIException(message=f"Client error with arXiv API request.", original_exception=e, status_code=e.response.status_code)
+        except requests.exceptions.Timeout as e:
+            last_exception = e
             logger.warning(f"Request timed out for {query_url}. Attempt {attempt + 1} of {MAX_RETRIES}.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"An unexpected error occurred: {e}. Attempt {attempt + 1} of {MAX_RETRIES}.")
+            if attempt == MAX_RETRIES - 1:
+                raise NetworkException(message="Request to arXiv API timed out.", original_exception=e)
+        except requests.exceptions.RequestException as e: # Catch other generic request exceptions
+            last_exception = e
+            logger.error(f"An unexpected request error occurred: {e}. Attempt {attempt + 1} of {MAX_RETRIES}.")
+            if attempt == MAX_RETRIES - 1:
+                # Using NetworkException as it seems more fitting for general request failures than a generic ArxivAPIException
+                raise NetworkException(f"A general network or request error occurred: {e}", original_exception=e)
         
         if attempt < MAX_RETRIES - 1:
             logger.info(f"Waiting before next retry...")
-            # General small delay before retrying, specific rate limit delay handled above
-            time.sleep(REQUEST_THROTTLE_SECONDS * (attempt +1) ) 
-        else:
-            logger.error(f"All {MAX_RETRIES} retries failed for URL: {query_url}")
-    return None
+            time.sleep(REQUEST_THROTTLE_SECONDS * (attempt + 1))
+    
+    # This block should ideally not be reached if exceptions in the loop are raised correctly on the final attempt.
+    # However, it serves as a defensive fallback.
+    if last_exception: # Should always be true if loop finishes without returning
+        logger.error(f"All {MAX_RETRIES} retries failed for URL: {query_url}. Last error: {type(last_exception).__name__}: {last_exception}")
+        # Re-evaluate the type of last_exception to raise the most specific custom error possible
+        if isinstance(last_exception, requests.exceptions.Timeout):
+            raise NetworkException(message="Request to arXiv API timed out (fallback).", original_exception=last_exception)
+        elif isinstance(last_exception, requests.exceptions.HTTPError):
+            if last_exception.response.status_code == 429:
+                raise NetworkException(message="arXiv API rate limit exceeded (fallback).", original_exception=last_exception, status_code=429)
+            elif last_exception.response.status_code >= 500:
+                raise NetworkException(message=f"arXiv API server error (fallback).", original_exception=last_exception, status_code=last_exception.response.status_code)
+            else:
+                raise ArxivAPIException(message=f"Client error with arXiv API request (fallback).", original_exception=last_exception, status_code=last_exception.response.status_code)
+        # For other RequestException types or if it's an unknown last_exception type.
+        raise NetworkException(f"All retries failed. Last error: {last_exception}", original_exception=last_exception)
+    
+    # Absolute fallback, should ideally never be reached.
+    raise ArxivAPIException(f"All {MAX_RETRIES} retries failed for URL: {query_url} without a specific final exception being categorized.")
 
-def search_papers(query: str = None, ids: list = None, start_index: int = 0, count: int = 10, sort_by: str = "relevance", sort_order: str = "descending") -> List[ArxivPaper] | None:
+@cache.memoize()
+def search_papers(query: str = None, ids: list = None, start_index: int = 0, count: int = 10, sort_by: str = "relevance", sort_order: str = "descending") -> Dict[str, Union[List[ArxivPaper], int]]:
     """
     High-level function to search for papers on arXiv.
-
-    Args:
-        query: The search query string.
-        ids: A list of arXiv IDs.
-        start_index: The starting index for results.
-        count: The number of results to fetch.
-        sort_by: Sorting criterion.
-        sort_order: Sorting order.
-
-    Returns:
-        A list of ArxivPaper objects or None on error.
+    Returns a dictionary with 'papers' list and 'total_results' count.
+    Raises ArxivAPIException, NetworkException, ParsingException or ValidationException on failure.
     """
-    logger.info(f"Searching papers with query='{query}', ids='{ids}', start={start_index}, count={count}")
+    # construct_query_url will raise ValidationException if params are bad
     query_url = construct_query_url(
         search_query=query,
         id_list=ids,
@@ -124,42 +160,36 @@ def search_papers(query: str = None, ids: list = None, start_index: int = 0, cou
         sortBy=sort_by,
         sortOrder=sort_order
     )
-
-    if not query_url:
-        logger.error("Failed to construct query URL in search_papers.")
-        return None
-
+    # make_api_request will raise appropriate ArxivAPIError subclass on failure
     response_xml = make_api_request(query_url)
+    
+    # parse_arxiv_xml will raise ArxivParsingError or ArxivAPIError on failure
+    parsed_data = parse_arxiv_xml(response_xml) 
+    
+    logger.info(f"Successfully processed search. Query='{query}', ids='{ids}', Found {len(parsed_data['papers'])} papers. Total results available: {parsed_data['total_results']}")
+    return parsed_data
 
-    if response_xml:
-        # Placeholder for parsing logic (Subtask 2.2 and 2.3)
-        logger.info("API request successful. XML response received.")
-        # For now, just returning the raw XML. Parsing will be implemented later.
-        # return response_xml 
-        parsed_papers = parse_arxiv_xml(response_xml)
-        if parsed_papers is not None:
-            logger.info(f"Successfully parsed {len(parsed_papers)} papers from XML.")
-            return parsed_papers
-        else:
-            logger.error("Failed to parse XML response in search_papers.")
-            return None # Or an empty list, depending on desired error handling for the caller
-    else:
-        logger.error("API request failed after multiple retries in search_papers.")
-        return None
-
-def parse_arxiv_xml(xml_string: str) -> List[ArxivPaper] | None:
+def parse_arxiv_xml(xml_string: str) -> Dict[str, Union[List[ArxivPaper], int]]:
     """
-    Parses the XML response from arXiv API into a list of ArxivPaper objects.
-
-    Args:
-        xml_string: The raw XML string from the API.
-
-    Returns:
-        A list of ArxivPaper objects, or None if parsing fails.
+    Parses the XML response from arXiv API into a list of ArxivPaper objects and total results count.
+    Raises ParsingException on failure to parse XML or other unexpected errors during parsing.
     """
     try:
         root = ET.fromstring(xml_string)
         papers = []
+        total_results = 0
+
+        # Extract total results
+        total_results_tag = root.find('opensearch:totalResults', NAMESPACES)
+        if total_results_tag is not None and total_results_tag.text is not None:
+            try:
+                total_results = int(total_results_tag.text)
+            except ValueError:
+                logger.warning(f"Could not parse totalResults value: '{total_results_tag.text}'. Defaulting to 0.")
+                total_results = 0 # Default or handle as critical error
+        else:
+            logger.warning("opensearch:totalResults tag not found or empty. Defaulting to 0.")
+
         for entry in root.findall('atom:entry', NAMESPACES):
             paper_data = {}
             # Helper to find text, returning None if element is not found
@@ -215,16 +245,16 @@ def parse_arxiv_xml(xml_string: str) -> List[ArxivPaper] | None:
             except TypeError as te:
                  logger.warning(f"Skipping entry due to TypeError (likely missing field for dataclass): {te}. Data: {paper_data}")
 
-        return papers
+        return {'papers': papers, 'total_results': total_results}
 
     except ET.ParseError as e:
         logger.error(f"Failed to parse XML string: {e}")
         logger.error(f"Problematic XML snippet (first 500 chars): {xml_string[:500]}...")
-        return None
-    except Exception as e: # Catch any other unexpected errors during parsing
+        raise ParsingException(f"Failed to parse XML response from arXiv.", original_exception=e)
+    except Exception as e: 
         logger.error(f"An unexpected error occurred during XML parsing: {e}")
         logger.error(f"Problematic XML snippet (first 500 chars): {xml_string[:500]}...")
-        return None
+        raise ParsingException(f"An unexpected error occurred during XML parsing of arXiv data.", original_exception=e)
 
 # Example usage (for testing during development)
 if __name__ == "__main__":

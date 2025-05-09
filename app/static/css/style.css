@@ -1,0 +1,254 @@
+/* Custom CSS styles will go here */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa; /* Light gray background */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure footer is at bottom */
+}
+
+.container {
+    max-width: 960px; /* Consistent max width for main content area */
+}
+
+/* Header styles */
+header.bg-dark {
+    /* Bootstrap bg-dark is fine, maybe add a subtle border or shadow if desired later */
+}
+
+header h1 {
+    font-size: 1.75rem; /* Slightly smaller than default Bootstrap h1 in a header */
+}
+
+/* Main content area */
+main.container {
+    flex-grow: 1; /* Allows main content to expand and push footer down */
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+}
+
+/* Footer styles */
+footer.footer {
+    background-color: #e9ecef; /* Slightly different from default Bootstrap bg-light for contrast */
+    border-top: 1px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+h1 {
+    font-size: 2.25rem;
+}
+
+h2 {
+    font-size: 1.8rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+a {
+    color: #007bff; /* Bootstrap primary blue */
+}
+
+a:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+/* Search Form specific (can be moved to a component style later if needed) */
+form[action*="search"] {
+    margin-bottom: 2rem; /* More space below search form */
+}
+
+form[action*="search"] input[type="text"] {
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid #ced4da;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out; /* For smooth focus transition */
+}
+
+form[action*="search"] input[type="text"]:focus {
+    border-color: #80bdff; /* Bootstrap focus blue */
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Bootstrap focus shadow */
+}
+
+form[action*="search"] button[type="submit"] {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border-radius: 0.25rem;
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    cursor: pointer;
+}
+
+form[action*="search"] button[type="submit"]:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Paper list item styling */
+.paper-item {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.paper-item h3 {
+    margin-top: 0; /* First heading in item */
+}
+
+.paper-item p {
+    margin-bottom: 0.5rem;
+}
+
+.paper-item strong {
+    color: #495057;
+}
+
+/* Pagination styling */
+.pagination {
+    margin-top: 2rem;
+    justify-content: center; /* Center pagination links */
+}
+
+.pagination a, .pagination span {
+    padding: 0.5rem 0.75rem;
+    margin: 0 0.25rem;
+    border: 1px solid #dee2e6;
+    text-decoration: none;
+    color: #007bff;
+    border-radius: 0.25rem;
+}
+
+.pagination a:hover {
+    background-color: #e9ecef;
+}
+
+.pagination span.disabled {
+    color: #6c757d;
+    background-color: #f8f9fa;
+    cursor: default;
+}
+
+.pagination span.current {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Error messages */
+.error-message {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+
+/* Loading Spinner (to be used with JavaScript later) */
+.loading-spinner {
+    border: 4px solid #f3f3f3; /* Light grey */
+    border-top: 4px solid #007bff; /* Blue */
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto; /* Example positioning */
+    display: none; /* Hidden by default, shown by JS */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design Rules */
+
+/* Small devices (landscape phones, less than 768px) */
+@media (max-width: 767.98px) {
+    body {
+        font-size: 0.95rem; /* Slightly smaller base font for small screens */
+    }
+
+    header h1 {
+        font-size: 1.5rem; /* Adjust header title size */
+        text-align: center;
+    }
+
+    main.container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.6rem;
+    }
+
+    h3 {
+        font-size: 1.3rem;
+    }
+
+    form[action*="search"] input[type="text"] {
+        width: 100%;
+        margin-bottom: 0.5rem; /* Add space between input and button when stacked */
+    }
+
+    form[action*="search"] button[type="submit"] {
+        width: 100%;
+    }
+
+    .paper-item {
+        padding: 1rem;
+    }
+
+    .pagination a, .pagination span {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Extra small devices (portrait phones, less than 576px) */
+@media (max-width: 575.98px) {
+    header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .paper-item h3 {
+        font-size: 1.2rem;
+    }
+
+    .paper-item p {
+        font-size: 0.9rem;
+    }
+
+    .pagination {
+        font-size: 0.85rem; /* Make pagination text even smaller */
+    }
+
+    .pagination a, .pagination span {
+        padding: 0.3rem 0.5rem;
+        margin: 0 0.15rem;
+    }
+} 

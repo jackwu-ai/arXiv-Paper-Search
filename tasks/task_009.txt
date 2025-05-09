@@ -1,0 +1,148 @@
+# Task ID: 9
+# Title: Implement Basic Caching
+# Status: deferred
+# Dependencies: 2, 5
+# Priority: low
+# Description: Add a simple caching mechanism to reduce API calls for repeated searches.
+# Details:
+Update the arxiv_api.py file to include a simple in-memory cache:
+
+```python
+import requests
+import xml.etree.ElementTree as ET
+from typing import List, Dict, Any, Optional
+import logging
+import time
+from functools import lru_cache
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Simple cache implementation
+class SimpleCache:
+    def __init__(self, max_size=100, ttl=300):  # TTL in seconds (5 minutes)
+        self.cache = {}
+        self.max_size = max_size
+        self.ttl = ttl
+    
+    def get(self, key):
+        if key not in self.cache:
+            return None
+        
+        entry = self.cache[key]
+        if time.time() - entry['timestamp'] > self.ttl:
+            # Entry expired
+            del self.cache[key]
+            return None
+        
+        return entry['data']
+    
+    def set(self, key, data):
+        # Evict oldest entry if cache is full
+        if len(self.cache) >= self.max_size:
+            oldest_key = min(self.cache.keys(), key=lambda k: self.cache[k]['timestamp'])
+            del self.cache[oldest_key]
+        
+        self.cache[key] = {
+            'data': data,
+            'timestamp': time.time()
+        }
+
+# Initialize cache
+search_cache = SimpleCache()
+
+def search_arxiv(query: str, start: int = 0, max_results: int = 10) -> Dict[str, Any]:
+    """Search arXiv API with the given query string, using cache when possible."""
+    if not query or not query.strip():
+        return {'error': 'Empty search query', 'papers': [], 'total_results': 0}
+    
+    # Create cache key from query parameters
+    cache_key = f"{query}:{start}:{max_results}"
+    
+    # Check cache first
+    cached_result = search_cache.get(cache_key)
+    if cached_result:
+        logger.info(f"Cache hit for query: {query}")
+        return cached_result
+    
+    logger.info(f"Cache miss for query: {query}, fetching from API")
+    
+    base_url = 'http://export.arxiv.org/api/query'
+    params = {
+        'search_query': query,
+        'start': start,
+        'max_results': max_results
+    }
+    
+    try:
+        response = requests.get(base_url, params=params, timeout=10)
+        response.raise_for_status()
+        
+        result = parse_arxiv_response(response.text)
+        
+        # Cache the result
+        search_cache.set(cache_key, result)
+        
+        return result
+    except requests.exceptions.RequestException as e:
+        logger.error(f"API request failed: {str(e)}")
+        return {'error': f'API request failed: {str(e)}', 'papers': [], 'total_results': 0}
+    except ET.ParseError as e:
+        logger.error(f"XML parsing error: {str(e)}")
+        return {'error': f'Failed to parse API response: {str(e)}', 'papers': [], 'total_results': 0}
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        return {'error': f'An unexpected error occurred: {str(e)}', 'papers': [], 'total_results': 0}
+```
+
+# Test Strategy:
+Test the caching mechanism by:
+1. Making the same search query multiple times and verifying that subsequent requests use the cache
+2. Checking the logs to confirm cache hits and misses
+3. Testing cache expiration by manipulating the TTL value for testing
+4. Verifying that the cache size is limited and old entries are evicted
+
+Measure the performance improvement by comparing response times for cached vs. non-cached queries.
+
+# Subtasks:
+## 1. Design and implement cache data structure [deferred]
+### Dependencies: None
+### Description: Create the core cache data structure that will store API responses
+### Details:
+Implement a cache class with the following features:
+- Use a dictionary/map as the underlying storage mechanism
+- Create methods for get, set, and delete operations
+- Implement a timestamp mechanism to track when items were added
+- Design the cache key generation strategy (consider request parameters)
+- Add basic statistics tracking (hits, misses, size)
+- Write unit tests to verify basic functionality
+- Document the API of the cache class
+
+## 2. Integrate cache with API wrapper [deferred]
+### Dependencies: 9.1
+### Description: Connect the cache implementation with the existing API wrapper
+### Details:
+Modify the API wrapper to use the cache:
+- Add cache lookup before making API requests
+- Store API responses in the cache after successful requests
+- Implement cache bypass option for force-refreshing data
+- Handle error cases appropriately (don't cache error responses)
+- Add logging for cache hits/misses
+- Create integration tests that verify the caching behavior
+- Update documentation to reflect caching capabilities
+
+## 3. Add cache management features [deferred]
+### Dependencies: 9.1, 9.2
+### Description: Implement advanced cache management capabilities
+### Details:
+Enhance the cache with management features:
+- Implement time-based expiration of cache entries
+- Add maximum size limit for the cache
+- Create eviction policies (LRU, FIFO) when cache reaches size limit
+- Add manual cache invalidation methods
+- Implement selective cache clearing (by prefix, pattern)
+- Create configuration options for cache behavior
+- Write stress tests to verify cache under heavy load
+- Document all configuration options and management features
+
