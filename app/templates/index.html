@@ -12,7 +12,7 @@
 <div id="search-content-area">
     <h1>{{ title | default('arXiv Paper Search') }}</h1>
     
-    <form method="GET" action="{{ url_for('main.search') }}" style="margin-bottom: 20px;" id="search-form">
+    <form method="GET" action="{{ url_for('search') }}" style="margin-bottom: 20px;" id="search-form">
         <input type="text" name="query" placeholder="Search arXiv" value="{{ query | default('') }}" size="40" id="search-query-input">
         <input type="hidden" name="page" value="1"> {# Always search from page 1 for new queries #}
         <button type="submit">Search</button>
@@ -30,6 +30,21 @@
         {# This block will show if a query was made and there was no overriding error #}
         {% if papers is defined and papers %}
             <h2>Search Results for "{{ query }}"</h2>
+            
+            {# NEW: Summarization Button and Container #}
+            <div class="summarization-controls" style="margin-bottom: 15px;">
+                <button id="summarize-button" class="btn btn-secondary">Summarize Top 5 Results with AI</button>
+            </div>
+            <div id="ai-summary-container" style="display:none; margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #f9f9f9;">
+                <h4><span class="badge bg-info text-dark">AI-Generated Summary</span> Key Takeaways:</h4>
+                <div id="ai-summary-content">
+                    <!-- Summary will be loaded here by JavaScript -->
+                    <p><em>Loading summary...</em></p>
+                </div>
+                 <p style="font-size: 0.8em; margin-top: 10px;"><em>Please note: Summaries are AI-generated and may not be fully accurate or comprehensive. Always refer to the original papers.</em></p>
+            </div>
+            {# END NEW #}
+
             <p>
                 Showing results 
                 {% if total_results > 0 %}
@@ -74,7 +89,7 @@
                 <ul class="pagination justify-content-center">
                     {% if page > 1 %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('main.search', query=query, page=page-1) }}">&laquo; Previous</a>
+                            <a class="page-link" href="{{ url_for('search', query=query, page=page-1) }}">&laquo; Previous</a>
                         </li>
                     {% else %}
                         <li class="page-item disabled">
@@ -88,7 +103,7 @@
 
                     {% if page < total_pages %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('main.search', query=query, page=page+1) }}">Next &raquo;</a>
+                            <a class="page-link" href="{{ url_for('search', query=query, page=page+1) }}">Next &raquo;</a>
                         </li>
                     {% else %}
                         <li class="page-item disabled">

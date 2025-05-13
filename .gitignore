@@ -42,4 +42,11 @@ instance/
 # Testing
 .pytest_cache/
 htmlcov/
-.coverage 
+.coverage
+
+# Added by Claude Task Master
+.idea
+.vscode
+# Task files
+tasks.json
+tasks/ 

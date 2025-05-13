@@ -46,6 +46,116 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (shortSummary) shortSummary.style.display = 'block';
                 }
             }
+
+            // NEW: Handle Summarize Top 5 Button Click
+            if (event.target.matches('#summarize-button')) {
+                event.preventDefault();
+                console.log('Summarize button clicked!');
+                const aiSummaryContainer = document.getElementById('ai-summary-container');
+                const aiSummaryContent = document.getElementById('ai-summary-content');
+
+                if (!aiSummaryContainer || !aiSummaryContent) {
+                    console.error('AI summary container or content element not found.');
+                    return;
+                }
+
+                // Show loading state
+                aiSummaryContainer.style.display = 'block';
+                aiSummaryContent.innerHTML = '<p><em>Gathering abstracts and preparing summary...</em></p>';
+
+                const paperItems = document.querySelectorAll('#search-results-block .paper-item');
+                const abstracts = [];
+                let papersToSummarizeCount = 0;
+
+                paperItems.forEach((item, index) => {
+                    if (index < 5) { // Only process top 5
+                        const fullSummaryElement = item.querySelector('.paper-summary-full .summary-content');
+                        const shortSummaryElement = item.querySelector('.paper-summary-short .summary-content');
+                        let summaryText = 'Summary not available.';
+
+                        if (fullSummaryElement && fullSummaryElement.textContent.trim() !== 'Summary not available.') {
+                            summaryText = fullSummaryElement.textContent.trim();
+                        } else if (shortSummaryElement && shortSummaryElement.textContent.trim() !== 'Summary not available.') {
+                            // Fallback to short summary if full is not there or says "not available"
+                            // We need to be careful as short summary might be truncated.
+                            // For now, let's prefer the full summary. If it exists but is "not available", then this paper has no summary.
+                            // The logic below assumes if `paper-summary-full` is present, it IS the definitive summary.
+                            // If `paper-summary-full` is NOT present, then the short summary is the only one.
+                            if(!fullSummaryElement && shortSummaryElement) {
+                                // Only use short summary if full summary structure is entirely missing
+                                summaryText = shortSummaryElement.textContent.trim().replace(/Read more$/, '').trim(); 
+                            }
+                        } 
+                        // If after all checks, summaryText is still "Summary not available." or empty, we reflect that.
+                        if (!summaryText || summaryText === 'Summary not available.') {
+                            abstracts.push({ title: item.querySelector('h3 a') ? item.querySelector('h3 a').textContent : 'Unknown Title', summary: 'No abstract available for this paper.' });
+                        } else {
+                            abstracts.push({ title: item.querySelector('h3 a') ? item.querySelector('h3 a').textContent : 'Unknown Title', summary: summaryText });
+                            papersToSummarizeCount++;
+                        }
+                    }
+                });
+
+                if (papersToSummarizeCount === 0) {
+                    aiSummaryContent.innerHTML = '<p><em>No abstracts available in the top 5 results to summarize.</em></p>';
+                    console.log('No abstracts to summarize from the top 5 results.');
+                    return;
+                }
+
+                console.log('Collected abstracts for summarization:', abstracts);
+
+                // Extract just the summary texts for the backend
+                const summaryTexts = abstracts.map(item => item.summary).filter(summary => summary !== 'No abstract available for this paper.');
+
+                if (summaryTexts.length === 0) {
+                    aiSummaryContent.innerHTML = '<p><em>No actual abstracts available in the top 5 results to summarize.</em></p>';
+                    console.log('No abstracts with actual content to summarize from the top 5 results.');
+                    return;
+                }
+
+                // Make the API call
+                fetch('/api/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Add CSRF token header if your Flask app uses CSRF protection for POST requests
+                        // 'X-CSRFToken': getCSRFToken() // Example: you'd need a getCSRFToken() function
+                    },
+                    body: JSON.stringify({ abstracts: summaryTexts })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // Try to get error message from backend if available
+                        return response.json().then(errData => {
+                            throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                        }).catch(() => {
+                            // Fallback if response.json() itself fails or no error message
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.summary) {
+                        // Sanitize the summary before rendering if it might contain HTML
+                        // For now, assuming plain text or backend sanitizes.
+                        // A more robust approach would be to use a sanitizer here.
+                        let formattedSummary = data.summary.replace(/\n/g, '<br>');
+                        aiSummaryContent.innerHTML = `<p>${formattedSummary}</p>`;
+                        console.log('Summary received:', data.summary);
+                    } else if (data.error) {
+                        aiSummaryContent.innerHTML = `<p><em>Error from summarization service: ${data.error}</em></p>`;
+                        console.error('Summarization API error:', data.error);
+                    } else {
+                        aiSummaryContent.innerHTML = '<p><em>Received an unexpected response from the summarization service.</em></p>';
+                        console.error('Unexpected summary response:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error calling summarization API:', error);
+                    aiSummaryContent.innerHTML = `<p><em>Could not retrieve summary: ${error.message}</em></p>`;
+                });
+            }
         });
     }
 
