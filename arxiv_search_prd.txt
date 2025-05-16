@@ -78,6 +78,25 @@ This document outlines the requirements for a simple web application, "arXiv Exp
         -   It sends the abstracts/summaries of these papers to a ChatGPT API (or similar LLM).
         -   The LLM generates a concise summary of the key takeaways from these papers.
         -   The summarized takeaways are then presented to the user, potentially in a modal or a dedicated section on the page.
+    -   **Email Newsletter Feature:**
+        -   **What it does:** Allows users to subscribe to a weekly newsletter containing summaries of selected papers and links to the papers.
+        -   **Why it's important:** Provides users with a convenient way to stay updated on research relevant to their interests without actively visiting the site.
+        -   **How it works:**
+            -   **Frontend:**
+                -   An input field for users to enter their email address.
+                -   A "Subscribe" button to opt-in to the newsletter.
+                -   A "Test Send" button (perhaps admin-only or for subscribed users) to trigger an immediate test email to their address.
+            -   **Backend:**
+                -   Store subscribed email addresses (requires a simple database or persistent storage solution).
+                -   A scheduled task (e.g., weekly cron job or scheduled function) to:
+                    -   Potentially gather "top" or "newly summarized" papers (criteria to be defined).
+                    -   Format an email with these summaries and links.
+                    -   Use the Gmail API (or another email service API) to send the newsletter to all subscribed users.
+                -   An endpoint to handle the "Test Send" functionality.
+            -   **Authentication & Security:**
+                -   Consider email verification (double opt-in) for subscriptions.
+                -   Securely manage API keys for the Gmail API.
+                -   Implement unsubscription mechanism.
 
 # Logical Dependency Chain
 1.  **Backend - arXiv API Wrapper:** Implement a Python function/module to query the arXiv API and parse its XML response. This should be testable independently.

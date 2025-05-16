@@ -11,24 +11,6 @@ node_modules/
 
 # Environment variables
 .env
-.venv
-env/
-venv/
-ENV/
-
-# Editor directories and files
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS specific
-.DS_Store
-
-
 
 # Python
 __pycache__/
@@ -36,8 +18,32 @@ __pycache__/
 *$py.class
 *.so
 
-# Flask
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# SQLite database
+*.sqlite3
+*.db
+
+# Instance folder (Flask)
 instance/
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Testing
 .pytest_cache/
@@ -45,8 +51,10 @@ htmlcov/
 .coverage
 
 # Added by Claude Task Master
-.idea
-.vscode
 # Task files
 tasks.json
-tasks/ 
+tasks/
+
+# Task Master specific (if any generated locally that shouldn't be committed)
+# tasks/generated_task_files/ # Example if you have such a folder
+# scripts/task-complexity-report.json # Example if it's auto-generated and not needed in git
