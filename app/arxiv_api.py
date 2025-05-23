@@ -12,7 +12,7 @@ from .exceptions import (
     ValidationException
 )
 from flask import current_app
-from app import cache
+from .extensions import cache
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

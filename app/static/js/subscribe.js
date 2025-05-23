@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const subscriptionForm = document.getElementById('subscriptionForm');
     const emailInput = document.getElementById('emailInput');
+    const keywordsInput = document.getElementById('keywordsInput');
     const emailValidationMessage = document.getElementById('emailValidationMessage');
     const subscribeButton = document.getElementById('subscribeButton');
     const testSendButton = document.getElementById('testSendButton');
@@ -74,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             hideFeedback();
             const email = emailInput.value.trim();
+            const keywords = keywordsInput.value.trim();
 
             if (!validateEmail(email)) {
                 return;
@@ -89,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ email: email }),
+                    body: JSON.stringify({ email: email, keywords: keywords }),
                 });
 
                 const result = await response.json();

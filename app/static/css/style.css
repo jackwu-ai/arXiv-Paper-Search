@@ -223,6 +223,25 @@ form[action*="search"] button[type="submit"]:hover {
         padding: 1rem;
     }
 
+    #ai-summary-container {
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+
+    #ai-summary-content {
+        max-height: 300px; /* Adjust max-height for smaller screens */
+        font-size: 0.9em; /* Slightly smaller text in summary on small screens */
+    }
+
+    #ai-summary-container h4 {
+        font-size: 1.1rem; /* Adjust heading size in summary */
+    }
+
+    #close-summary-button {
+        font-size: 1.1rem;
+        padding: 0.2rem 0.4rem;
+    }
+
     .pagination a, .pagination span {
         padding: 0.4rem 0.6rem;
         font-size: 0.9rem;
@@ -243,6 +262,24 @@ form[action*="search"] button[type="submit"]:hover {
         font-size: 0.9rem;
     }
 
+    #ai-summary-container {
+        padding: 8px;
+    }
+
+    #ai-summary-content {
+        max-height: 250px; /* Further adjust max-height */
+        font-size: 0.85em;
+    }
+
+    #ai-summary-container h4 {
+        font-size: 1rem;
+    }
+
+    #close-summary-button {
+        font-size: 1rem;
+        padding: 0.15rem 0.35rem;
+    }
+
     .pagination {
         font-size: 0.85rem; /* Make pagination text even smaller */
     }
@@ -250,5 +287,202 @@ form[action*="search"] button[type="submit"]:hover {
     .pagination a, .pagination span {
         padding: 0.3rem 0.5rem;
         margin: 0 0.15rem;
+    }
+}
+
+/* AI Summary Specific Styles */
+#ai-summary-container {
+    /* Existing styles are good, ensure it behaves well responsively */
+    /* Adding overflow for very long content that might not wrap nicely */
+    overflow-x: hidden; /* Prevent horizontal scroll from unexpected content */
+}
+
+#ai-summary-container .loading-indicator-text {
+    font-style: italic;
+    color: #555;
+}
+
+#ai-summary-container .summary-error-text {
+    color: #d9534f; /* Bootstrap danger color */
+    font-weight: bold;
+}
+
+#ai-summary-container .summary-success-text {
+    color: #5cb85c; /* Bootstrap success color */
+}
+
+#ai-summary-content {
+    overflow-wrap: break-word; /* Help prevent layout breaks from long words/strings */
+    word-wrap: break-word; /* Legacy browsers */
+    max-height: 400px; /* Suggestion: Limit height and make scrollable if content is too long */
+    overflow-y: auto;  /* Add scroll for overflowing content */
+}
+
+#close-summary-button {
+    /* Basic styling, btn-light and btn-sm from Bootstrap should be mostly fine */
+    /* Ensure it's not too small on touch devices if custom styling is added */
+    padding: 0.25rem 0.5rem;
+    font-size: 1.25rem; /* Make the 'x' a bit larger */
+    line-height: 1;
+    margin-left: 10px; /* Some space from the heading */
+}
+
+#summarize-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Simple spinner for summary loading */
+.summary-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0,0,0,.1);
+    border-radius: 50%;
+    border-top-color: #007bff; /* Primary color */
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Ensure loading spinner from main search doesn't conflict if reused by name */
+#search-results-block .loading-indicator p {
+    /* Styles for main search loading text if any */
+}
+
+#search-results-block.is-loading .loading-indicator {
+    /* Styles for main search loading container if any */
+    padding: 20px;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+/* Single Paper Summary Modal Styles */
+.modal {
+    position: fixed; /* Stay in place */
+    z-index: 1050; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: hidden; /* Disable scroll on body when modal is open (handled by JS potentially) */
+    background-color: rgba(0,0,0,0.5); /* Black w/ opacity for overlay */
+    display: none; /* Hidden by default - controlled by JS */
+}
+
+.modal-dialog {
+    position: relative;
+    margin: 1.75rem auto; /* Centered, with some space from top/bottom */
+    pointer-events: none; /* Let clicks pass through to modal-content */
+    max-width: 800px; /* Default max-width for modal-lg */
+}
+
+.modal.show .modal-dialog {
+    transform: none; /* For transitions if added */
+}
+
+.modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    pointer-events: auto;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid rgba(0,0,0,.2);
+    border-radius: 0.3rem;
+    outline: 0;
+}
+
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+    border-top-left-radius: calc(0.3rem - 1px);
+    border-top-right-radius: calc(0.3rem - 1px);
+}
+
+.modal-header .close {
+    padding: 1rem 1rem;
+    margin: -1rem -1rem -1rem auto;
+    background-color: transparent;
+    border: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
+    opacity: .5;
+}
+.modal-header .close:hover {
+    opacity: .75;
+}
+
+.modal-title {
+    margin-bottom: 0;
+    line-height: 1.5;
+    font-size: 1.25rem;
+}
+
+.modal-body {
+    position: relative;
+    flex: 1 1 auto;
+    padding: 1rem;
+    max-height: 70vh; /* Limit height and make scrollable */
+    overflow-y: auto;
+}
+
+.modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0.75rem;
+    border-top: 1px solid #dee2e6;
+    border-bottom-right-radius: calc(0.3rem - 1px);
+    border-bottom-left-radius: calc(0.3rem - 1px);
+}
+
+.modal-footer > * {
+    margin: 0.25rem;
+}
+
+/* Responsive adjustments for modal */
+@media (max-width: 991.98px) { /* Corresponds to Bootstrap's lg breakpoint */
+    .modal-dialog.modal-lg, .modal-dialog.modal-xl {
+        max-width: 800px; 
+    }
+}
+
+@media (max-width: 767.98px) { /* md breakpoint */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    .modal-content {
+        height: calc(100vh - 1rem); /* Full height on small screens */
+    }
+    .modal-body {
+        max-height: calc(100vh - 1rem - 56px - 53px); /* Adjust based on header/footer height */
+    }
+}
+
+@media (max-width: 575.98px) { /* sm breakpoint */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 0.75rem;
+    }
+    .modal-title {
+        font-size: 1.1rem;
+    }
+    .modal-body {
+         max-height: calc(100vh - 1rem - 50px - 48px); /* Further adjust */
     }
 } 

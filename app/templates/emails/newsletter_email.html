@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly AI Research Newsletter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333333;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #333333;
+        }
+        .paper-item {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .paper-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .paper-item h2 {
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        .paper-item h2 a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .paper-item h2 a:hover {
+            text-decoration: underline;
+        }
+        .paper-item .meta {
+            font-size: 0.9em;
+            color: #777777;
+            margin-bottom: 10px;
+        }
+        .paper-item .summary {
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .paper-item .original-abstract-link {
+            font-size: 0.9em;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            margin-top: 20px;
+            border-top: 1px solid #eeeeee;
+            font-size: 0.8em;
+            color: #777777;
+        }
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Weekly AI Research Newsletter</h1>
+            <p>Your weekly dose of AI insights, powered by arXiv.</p>
+        </div>
+
+        {% if papers %}
+            {% for paper in papers %}
+            <div class="paper-item">
+                <h2><a href="{{ paper.pdf_link if paper.pdf_link else '#' }}" target="_blank">{{ paper.title }}</a></h2>
+                <p class="meta">
+                    <strong>Authors:</strong> {{ paper.authors | join(', ') if paper.authors else 'N/A' }}<br>
+                    <strong>Published:</strong> {{ paper.published_date | format_date if paper.published_date else 'N/A' }}<br>
+                    {% if paper.primary_category %}<strong>Category:</strong> {{ paper.primary_category }}{% endif %}
+                </p>
+                <div class="summary">
+                    <strong>AI Summary:</strong>
+                    <p>{{ paper.ai_summary | safe if paper.ai_summary else 'Summary not available.' }}</p>
+                </div>
+                <div class="original-abstract-link">
+                    <a href="https://arxiv.org/abs/{{ paper.id }}" target="_blank">View original abstract on arXiv</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No new papers featured this week. Check back next week for more updates!</p>
+        {% endif %}
+
+        <div class="footer">
+            <p>You are receiving this email because you subscribed to our newsletter.</p>
+            <p><a href="{{ unsubscribe_url }}">Unsubscribe</a> | <a href="{{ site_url }}">Visit our website</a></p>
+            <p>&copy; {{ current_year }} Your App Name. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html> 
