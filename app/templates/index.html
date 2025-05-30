@@ -2,21 +2,25 @@
 
 {% block title %}
     {% if query %}
-        Search Results for "{{ query }}" - arXiv Paper Search
+        Search Results for "{{ query }}" - Paper Lense
     {% else %}
-        arXiv Paper Search
+        Paper Lense
     {% endif %}
 {% endblock %}
 
 {% block content %}
 <div id="search-content-area">
-    <h1>{{ title | default('arXiv Paper Search') }}</h1>
-    
-    <form method="GET" action="{{ url_for('main.search') }}" style="margin-bottom: 20px;" id="search-form">
-        <input type="text" name="query" placeholder="Search arXiv" value="{{ query | default('') }}" size="40" id="search-query-input">
-        <input type="hidden" name="page" value="1"> {# Always search from page 1 for new queries #}
-        <button type="submit">Search</button>
-    </form>
+    <section class="hero text-center py-5 mb-4">
+        <h1 class="display-4 mb-3">Paper Lense</h1>
+        <p class="lead mb-4">A simple, free tool that lets you search PhD papers, skim AI-generated key takeaways, and subscribe for weekly digests — no signup required.</p>
+        <p class="h5 text-primary fw-semibold mb-4">Never miss the breakthroughs that move your industry.</p>
+        <form method="GET" action="{{ url_for('main.search') }}" id="search-form" class="d-flex justify-content-center">
+            <input type="text" name="query" placeholder="Search PhD papers" value="{{ query | default('') }}" class="form-control form-control-lg w-100 w-lg-50" id="search-query-input" aria-label="Search PhD papers">
+            <input type="hidden" name="page" value="1">
+            <button type="submit" class="btn btn-primary btn-lg ml-2">Search</button>
+        </form>
+        <p class="text-muted small mt-2">Examples: <em>machine learning</em>, <em>generative AI</em>, <em>stock analysis</em>, <em>cryptocurrency</em>, <em>natural language processing</em></p>
+    </section>
     <div id="js-search-error-message" class="alert alert-danger" role="alert" style="display:none;"></div>
 
     <div id="search-results-block">
@@ -29,94 +33,103 @@
     {% if query and not error_message %}
         {# This block will show if a query was made and there was no overriding error #}
         {% if papers is defined and papers %}
-            <h2>Search Results for "{{ query }}"</h2>
-            
-            {# NEW: Summarization Button and Container #}
-            <div class="summarization-controls" style="margin-bottom: 15px;">
-                <button id="summarize-button" class="btn btn-secondary" aria-controls="ai-summary-container" aria-expanded="false">Summarize Top 5 Results with AI</button>
-            </div>
-            <div id="ai-summary-container" role="region" aria-labelledby="ai-summary-heading" style="display:none; margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #f9f9f9;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 id="ai-summary-heading"><span class="badge bg-info text-dark">AI-Generated Summary</span> Key Takeaways:</h4>
-                    <button id="close-summary-button" class="btn btn-sm btn-light" aria-label="Close AI Summary" style="display:none;">&times;</button>
-                </div>
-                <div id="ai-summary-content" aria-live="polite">
-                    <!-- Summary will be loaded here by JavaScript -->
-                    <p role="status"><em>Loading summary...</em></p>
-                </div>
-                 <p style="font-size: 0.8em; margin-top: 10px;"><em>Please note: Summaries are AI-generated and may not be fully accurate or comprehensive. Always refer to the original papers.</em></p>
-            </div>
-            {# END NEW #}
-
-            <p>
-                Showing results 
-                {% if total_results > 0 %}
-                    {{ ( (page - 1) * results_per_page ) + 1 }} -
-                    {{ min(page * results_per_page, total_results) }}
-                {% else %}
-                    0
-                {% endif %}
-                of {{ total_results }} (Page {{ page }} of {{ total_pages if total_pages > 0 else 1 }})
-            </p>
-            <ul style="list-style-type: none; padding-left: 0;">
-            {% for paper in papers %}
-                <li class="paper-item">
-                    <h3><a href="{{ paper.pdf_link }}" target="_blank" rel="noopener noreferrer">{{ paper.title | sanitize_html | highlight(query) | safe }}</a></h3>
-                    <div class="paper-meta">
-                        <span class="paper-authors"><strong>Authors:</strong> {{ paper.authors | format_authors(5) | safe if paper.authors else 'N/A' }}</span>
-                        <span class="paper-date"><strong>Published:</strong> {{ paper.published_date | format_date if paper.published_date else 'N/A' }}</span>
+            <div class="row justify-content-center">
+                <!-- Results Column -->
+                <div class="col-lg-8 order-2 order-lg-1 mx-lg-auto" id="results-column">
+                    <h2>Search Results for "{{ query }}"</h2>
+                    <div class="summarization-controls mb-3">
+                        <button id="summarize-button" class="btn btn-primary shadow-sm" aria-controls="ai-summary-container" aria-expanded="false">Summarize Top 5 Results with AI</button>
                     </div>
-                    <div class="paper-summary-container">
-                        <p class="paper-summary paper-summary-short">
-                            <strong>Summary:</strong>
-                            <span class="summary-content">{{ paper.summary | sanitize_html | highlight(query) | truncate_text(150) | safe if paper.summary else 'Summary not available.' }}</span>
-                            {% if paper.summary and (paper.summary | length > 150 or (paper.summary | truncate_text(150) | length < paper.summary | length)) %}
-                                <a href="#" class="read-more-link" aria-label="Read more summary for {{ paper.title }}">Read more</a>
-                            {% endif %}
-                        </p>
-                        {% if paper.summary and (paper.summary | length > 150 or (paper.summary | truncate_text(150) | length < paper.summary | length)) %}
-                        <p class="paper-summary paper-summary-full" style="display:none;">
-                            <strong>Summary:</strong>
-                            <span class="summary-content">{{ paper.summary | sanitize_html | highlight(query) | safe }}</span>
-                            <a href="#" class="read-less-link" aria-label="Read less summary for {{ paper.title }}">Read less</a>
-                        </p>
+
+                    <p class="text-muted small mb-3">
+                        Showing
+                        {% if total_results > 0 %}
+                            {{ ( (page - 1) * results_per_page ) + 1 }} - {{ min(page * results_per_page, total_results) }}
+                        {% else %}
+                            0
                         {% endif %}
+                        of {{ total_results }} papers (Page {{ page }} of {{ total_pages if total_pages > 0 else 1 }})
+                    </p>
+
+                    <ul class="list-unstyled">
+                    {% for paper in papers %}
+                        <article class="paper-item mb-4" aria-labelledby="paper-{{ loop.index }}-title">
+                            <h3 id="paper-{{ loop.index }}-title" class="mb-2"><a href="{{ paper.pdf_link }}" target="_blank" rel="noopener noreferrer">{{ paper.title | sanitize_html | highlight(query) | safe }}</a></h3>
+                            {% if paper.primary_category %}<span class="badge badge-secondary mb-2">{{ paper.primary_category }}</span>{% endif %}
+                            <div class="paper-meta mb-2 text-muted">
+                                <span class="paper-authors"><strong>Authors:</strong> {{ paper.authors | format_authors(5) | safe if paper.authors else 'N/A' }}</span> |
+                                <span class="paper-date"><strong>Published:</strong> {{ paper.published_date | format_date if paper.published_date else 'N/A' }}</span>
+                            </div>
+                            <div class="paper-summary-container">
+                                <p class="paper-summary paper-summary-short">
+                                    <strong>Summary:</strong>
+                                    <span class="summary-content">{{ paper.summary | sanitize_html | highlight(query) | truncate_text(150) | safe if paper.summary else 'Summary not available.' }}</span>
+                                    {% if paper.summary and (paper.summary | length > 150 or (paper.summary | truncate_text(150) | length < paper.summary | length)) %}
+                                        <a href="#" class="read-more-link" aria-label="Read more summary for {{ paper.title }}">Read more</a>
+                                    {% endif %}
+                                </p>
+                                {% if paper.summary and (paper.summary | length > 150 or (paper.summary | truncate_text(150) | length < paper.summary | length)) %}
+                                <p class="paper-summary paper-summary-full" style="display:none;">
+                                    <strong>Summary:</strong>
+                                    <span class="summary-content">{{ paper.summary | sanitize_html | highlight(query) | safe }}</span>
+                                    <a href="#" class="read-less-link" aria-label="Read less summary for {{ paper.title }}">Read less</a>
+                                </p>
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                    </ul>
+
+                    {# Pagination Controls #}
+                    {% if total_pages is defined and total_pages > 1 %}
+                    <nav aria-label="Page navigation" class="pagination-nav text-center">
+                        <ul class="pagination justify-content-center">
+                            {% if page > 1 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('main.search', query=query, page=page-1) }}">&laquo; Previous</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&laquo; Previous</span>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item disabled">
+                                <span class="page-link current">Page {{ page }} of {{ total_pages }}</span>
+                            </li>
+
+                            {% if page < total_pages %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('main.search', query=query, page=page+1) }}">Next &raquo;</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next &raquo;</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+
+                <!-- AI Summary Column -->
+                <aside class="col-lg-4 order-1 order-lg-2 mb-4 mb-lg-0">
+                    <div id="ai-summary-container" class="sticky-top" style="display:none; top: 100px;">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 id="ai-summary-heading" class="mb-0"><span class="badge badge-info text-dark">AI Key Takeaways</span></h5>
+                                    <button id="close-summary-button" class="btn btn-sm btn-light" aria-label="Close AI Summary" style="display:none;">&times;</button>
+                                </div>
+                                <div id="ai-summary-content" aria-live="polite">
+                                    <p role="status" class="text-muted"><em>Loading summary...</em></p>
+                                </div>
+                                <p class="small text-muted mt-2"><em>Summaries are AI-generated and may not be fully accurate.</em></p>
+                            </div>
+                        </div>
                     </div>
-                </li>
-            {% endfor %}
-            </ul>
-
-            {# Pagination Controls #}
-            {% if total_pages is defined and total_pages > 1 %}
-            <nav aria-label="Page navigation" class="pagination-nav">
-                <ul class="pagination justify-content-center">
-                    {% if page > 1 %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('main.search', query=query, page=page-1) }}">&laquo; Previous</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">&laquo; Previous</span>
-                        </li>
-                    {% endif %}
-
-                    <li class="page-item disabled">
-                        <span class="page-link current">Page {{ page }} of {{ total_pages }}</span>
-                    </li>
-
-                    {% if page < total_pages %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('main.search', query=query, page=page+1) }}">Next &raquo;</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Next &raquo;</span>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
-
+                </aside>
+            </div><!-- end row -->
         {% elif query %} {# Query was made, but no papers found and no error_message from route #}
             <h2>Search Results for "{{ query }}"</h2>
             <p>No results found for "{{ query }}". Please try different keywords.</p>
@@ -128,7 +141,16 @@
          <p>Please enter a search term.</p>
     {% else %}
         {# Initial page load, before any search or if query was not in args #}
-        <p>Welcome to the arXiv Paper Search. Please enter your query above.</p>
+        <p>Welcome to Paper Lense!<br>
+        This open-source web app helps you:
+        </p>
+        <ul class="list-unstyled text-left d-inline-block">
+            <li>1. <strong>Search</strong> for PhD papers using natural keywords (arXiv database).</li>
+            <li>2. <strong>Browse</strong> cleanly-formatted results and open PDFs in one click.</li>
+            <li>3. Press <em>"Summarize Top 5"</em> to get instant AI-generated <em>key takeaways</em> for the best-matching papers.</li>
+            <li>4. Add your email below to receive a concise weekly newsletter matching your interests.</li>
+        </ul>
+        <p class="mt-3">Type a topic into the search box above to get started.</p>
     {% endif %}
     </div> {# End of search-results-block #}
 

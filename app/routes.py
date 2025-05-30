@@ -122,65 +122,89 @@ def summarize_abstracts():
             current_app.logger.warning("No papers provided for summarization.")
             return jsonify({"error": "No papers provided."}), 400
 
-        abstracts_to_summarize = []
-        valid_papers_for_output = []
-        for paper in input_papers:
-            if not isinstance(paper, dict) or not all(key in paper for key in ['id', 'title', 'abstract_text']):
-                current_app.logger.warning(f"Skipping invalid paper object: {paper}")
-                continue
-            abstracts_to_summarize.append(paper['abstract_text'])
-            valid_papers_for_output.append({"id": paper['id'], "title": paper['title']})
-        
-        if not abstracts_to_summarize:
-            current_app.logger.warning("No valid abstracts found in the provided papers list.")
-            return jsonify({"error": "No valid abstracts to summarize."}), 400
-
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             current_app.logger.error("OPENAI_API_KEY not found in environment variables.")
             return jsonify({"error": "OpenAI API key not configured on the server."}), 500
         
         client = OpenAI(api_key=api_key)
-        combined_abstracts = "\\n\\n---\\n\\n".join(abstracts_to_summarize)
-        max_words = 3000 
-        if len(combined_abstracts.split()) > max_words:
-            current_app.logger.warning(f"Combined abstracts exceed {max_words} words. Truncating.")
-            combined_abstracts = ' '.join(combined_abstracts.split()[:max_words])
+        
+        summarized_papers_data = []
+        max_retries_per_paper = 2
 
-        prompt = f"Please summarize the key findings, methodologies, and conclusions from the following research paper abstracts. Provide a concise overview that highlights the main contributions of each paper if possible, and then a brief overall synthesis if themes emerge. Abstracts:\\n\\n{combined_abstracts}"
-        current_app.logger.info(f"Attempting to summarize {len(abstracts_to_summarize)} abstracts.")
+        for paper_data in input_papers:
+            if not isinstance(paper_data, dict) or not all(key in paper_data for key in ['id', 'title', 'abstract_text']):
+                current_app.logger.warning(f"Skipping invalid paper object: {paper_data}")
+                summarized_papers_data.append({
+                    "id": paper_data.get("id", "unknown"), 
+                    "title": paper_data.get("title", "Unknown Title"), 
+                    "takeaways_text": "Error: Invalid paper data provided."
+                })
+                continue
 
-        max_retries = 2
-        for attempt in range(max_retries):
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant skilled in summarizing academic research papers."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.5,
-                    max_tokens=1000
-                )
-                summary = response.choices[0].message.content.strip()
-                current_app.logger.info(f"Successfully generated summary for {len(abstracts_to_summarize)} abstracts.")
-                return jsonify({"summary_text": summary, "summarized_papers": valid_papers_for_output})
-            except RateLimitError as e:
-                current_app.logger.warning(f"OpenAI RateLimitError (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt + 1 == max_retries:
-                    return jsonify({"error": "OpenAI API rate limit exceeded. Please try again later."}), 429
-            except APIError as e:
-                current_app.logger.error(f"OpenAI API error (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt + 1 == max_retries:
-                    return jsonify({"error": f"An error occurred with the OpenAI API: {str(e)}"}), 500
-            except Exception as e:
-                current_app.logger.error(f"Unexpected error during OpenAI API call (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt + 1 == max_retries:
-                    return jsonify({"error": "An unexpected error occurred while generating the summary."}), 500
-        return jsonify({"error": "Failed to generate summary after multiple attempts."}), 500
+            paper_id = paper_data['id']
+            title = paper_data['title']
+            abstract = paper_data['abstract_text']
+
+            if not abstract or not abstract.strip():
+                current_app.logger.warning(f"Empty abstract for paper ID {paper_id} ('{title}'). Skipping summarization for this paper.")
+                summarized_papers_data.append({
+                    "id": paper_id, 
+                    "title": title, 
+                    "takeaways_text": "Abstract was empty, no takeaways generated."
+                })
+                continue
+            
+            # Truncate individual abstract if too long (though less likely for single abstracts)
+            max_words_per_abstract = 3000 
+            if len(abstract.split()) > max_words_per_abstract:
+                current_app.logger.warning(f"Abstract for paper '{title}' (ID: {paper_id}) exceeds {max_words_per_abstract} words. Truncating.")
+                abstract = ' '.join(abstract.split()[:max_words_per_abstract])
+
+            prompt = (
+                f"Extract exactly 3 key takeaways from the following research paper abstract. Present these takeaways as a numbered list. "
+                f"Each takeaway should be concise and highlight a main contribution, finding, or methodology.\n\n"
+                f"Title: {title}\n"
+                f"Abstract:\n{abstract}"
+            )
+            current_app.logger.info(f"Attempting to generate 3 key takeaways for paper: '{title}' (ID: {paper_id}).")
+            
+            takeaways_text = "Error: Could not generate takeaways."
+            for attempt in range(max_retries_per_paper):
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant skilled in extracting key takeaways from academic research papers."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.5,
+                        max_tokens=300 # Max tokens for 3 takeaways from one abstract
+                    )
+                    takeaways_text = response.choices[0].message.content.strip()
+                    current_app.logger.info(f"Successfully generated takeaways for paper '{title}' (ID: {paper_id}).")
+                    break 
+                except RateLimitError as e:
+                    current_app.logger.warning(f"OpenAI RateLimitError for paper '{title}' (attempt {attempt + 1}/{max_retries_per_paper}): {e}")
+                    if attempt + 1 == max_retries_per_paper:
+                        takeaways_text = "Error: OpenAI API rate limit exceeded."
+                except APIError as e:
+                    current_app.logger.error(f"OpenAI API error for paper '{title}' (attempt {attempt + 1}/{max_retries_per_paper}): {e}")
+                    if attempt + 1 == max_retries_per_paper:
+                        takeaways_text = f"Error: OpenAI API error ({str(e)})."
+                except Exception as e:
+                    current_app.logger.error(f"Unexpected error for paper '{title}' (attempt {attempt + 1}/{max_retries_per_paper}): {e}")
+                    if attempt + 1 == max_retries_per_paper:
+                        takeaways_text = "Error: Unexpected error during takeaway generation."
+            
+            summarized_papers_data.append({"id": paper_id, "title": title, "takeaways_text": takeaways_text})
+
+        current_app.logger.info(f"Finished processing {len(input_papers)} papers for key takeaways.")
+        return jsonify({"papers_with_takeaways": summarized_papers_data})
+
     except Exception as e:
         current_app.logger.error(f"Error in /api/summarize_papers: {e}", exc_info=True)
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred processing paper takeaways."}), 500
 
 @main.route('/api/summarize_single_paper', methods=['POST'])
 def summarize_single_paper():

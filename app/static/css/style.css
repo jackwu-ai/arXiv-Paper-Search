@@ -11,7 +11,7 @@ body {
 }
 
 .container {
-    max-width: 960px; /* Consistent max width for main content area */
+    max-width: 1280px; /* Wider layout for modern screens */
 }
 
 /* Header styles */
@@ -103,10 +103,15 @@ form[action*="search"] button[type="submit"]:hover {
 .paper-item {
     background-color: #fff;
     border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
     padding: 1.5rem;
+    transition: box-shadow .2s ease;
     margin-bottom: 1.5rem;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    width: 100%;
+}
+
+.paper-item:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.05);
 }
 
 .paper-item h3 {
@@ -122,9 +127,14 @@ form[action*="search"] button[type="submit"]:hover {
 }
 
 /* Pagination styling */
-.pagination {
-    margin-top: 2rem;
-    justify-content: center; /* Center pagination links */
+.pagination-nav {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.pagination-nav .pagination {
+    margin: 0 auto 2rem auto;
 }
 
 .pagination a, .pagination span {
@@ -484,5 +494,63 @@ form[action*="search"] button[type="submit"]:hover {
     }
     .modal-body {
          max-height: calc(100vh - 1rem - 50px - 48px); /* Further adjust */
+    }
+}
+
+/* --- Hero Section --- */
+.hero {
+    background: linear-gradient(135deg,#f8fbff 0%,#eef5ff 100%);
+    border-radius: 8px;
+    position: relative;
+}
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(135deg,rgba(255,255,255,0.15) 0 10px,transparent 10px 20px);
+    border-radius: 8px;
+    pointer-events: none;
+}
+.hero h1 {
+    font-weight: 600;
+}
+.hero form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+.hero input[type="text"] {
+    height: 56px;
+    font-size: 1.125rem;
+}
+.hero button[type="submit"] {
+    height: 56px;
+    font-size: 1.125rem;
+    padding: 0 1.5rem;
+}
+
+/* Sticky summary adjustments */
+#ai-summary-container .card {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+}
+
+/* Summarize button embellishment */
+#summarize-button.btn-primary:hover {
+    box-shadow: 0 .5rem 1rem rgba(0,123,255,.25) !important;
+}
+
+.subscription-widget input[type="email"], .subscription-widget input[type="text"] {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+.subscription-widget .form-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+@media (max-width: 575.98px) {
+    .subscription-widget .form-actions {
+        flex-direction: column;
     }
 } 

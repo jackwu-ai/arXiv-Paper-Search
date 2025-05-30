@@ -157,21 +157,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     const freshAiSummaryContent = document.getElementById('ai-summary-content'); // Re-fetch in case it was cleared
                     if (!freshAiSummaryContent) return;
 
-                    if (data.summary_text) { 
-                        let formattedSummary = data.summary_text.replace(/\n/g, '<br>');
-                        freshAiSummaryContent.innerHTML = `<p>${formattedSummary}</p>`;
-                        if(data.summarized_papers && data.summarized_papers.length > 0) {
-                            let paperListHtml = '<p><strong>Summarized papers:</strong></p><ul>';
-                            data.summarized_papers.forEach(p_response => {
-                                const originalPaper = papersToSummarize.find(op => op.id === p_response.id);
-                                const abstractForDataAttr = originalPaper ? originalPaper.abstract_text : '';
-                                const pdfLinkForDataAttr = originalPaper ? originalPaper.pdf_link : '#';
-                                paperListHtml += `<li><a href="#" class="single-paper-summary-link" data-paper-id="${p_response.id}" data-paper-title="${p_response.title.replace(/"/g, '&quot;')}" data-paper-abstract="${abstractForDataAttr.replace(/"/g, '&quot;')}" data-paper-pdf-link="${pdfLinkForDataAttr}">${p_response.title}</a> <small>(<a href="${pdfLinkForDataAttr}" target="_blank" rel="noopener noreferrer">Original Paper</a>)</small></li>`;
+                    if (data.papers_with_takeaways && Array.isArray(data.papers_with_takeaways)) {
+                        let htmlContent = '';
+                        if (data.papers_with_takeaways.length === 0) {
+                            htmlContent = '<p>No takeaways could be generated for the top papers.</p>';
+                        } else {
+                            data.papers_with_takeaways.forEach(paper => {
+                                htmlContent += `<div class="paper-takeaways-block" style="margin-bottom: 15px;">`;
+                                htmlContent += `<h5><a href="#" class="single-paper-summary-link" data-paper-id="${paper.id}" data-paper-title="${paper.title.replace(/"/g, '&quot;')}" data-paper-abstract="" data-paper-pdf-link="/pdf/${paper.id}">${paper.title}</a></h5>`; // Assuming PDF link structure, abstract can be fetched later if needed for modal
+                                let takeaways = paper.takeaways_text.replace(/\n/g, '<br>');
+                                // Basic styling for takeaways if they aren't already in a list
+                                if (!takeaways.match(/^\s*<ol>|<ul/i) && takeaways.includes('<br>')) {
+                                    // Attempt to wrap lines that look like list items
+                                    const lines = takeaways.split('<br>').map(line => line.trim()).filter(line => line.length > 0);
+                                    if (lines.every(line => /^\d+[.)]?\s+/.test(line)) || lines.every(line => /^[-*+]\s+/.test(line))) {
+                                        takeaways = `<ul>${lines.map(line => `<li>${line.replace(/^\d+[.)]?\s+|^[-*+]\s+/, '')}</li>`).join('')}</ul>`;
+                                    } else {
+                                        takeaways = `<p>${takeaways}</p>`; // Fallback to paragraph
+                                    }
+                                } else if (!takeaways.match(/^\s*<[uo]l>/i)) {
+                                     takeaways = `<p>${takeaways}</p>`; // Fallback for non-list text
+                                }
+                                htmlContent += takeaways;
+                                htmlContent += `</div>`;
                             });
-                            paperListHtml += '</ul>';
-                            freshAiSummaryContent.innerHTML += paperListHtml;
                         }
-                        openAiSummary(); 
+                        freshAiSummaryContent.innerHTML = htmlContent;
+                        openAiSummary();
                     } else if (data.error) {
                         freshAiSummaryContent.innerHTML = `<p class="summary-error-text">Error from summarization service: ${data.error}</p>`;
                     } else {

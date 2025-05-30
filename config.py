@@ -49,7 +49,7 @@ class Config:
     # --- Email Configuration ---
     # The MAIL_DEFAULT_SENDER_NAME and MAIL_DEFAULT_SENDER_EMAIL might still be useful for display purposes
     # or if some parts of Flask-Mail are kept for other reasons, but sending will be via Gmail API.
-    MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME') or 'Your App Name'
+    MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME') or 'Insight Scout'
     MAIL_DEFAULT_SENDER_EMAIL = os.environ.get('MAIL_DEFAULT_SENDER_EMAIL') or 'your-app-sender-email@example.com' # This should match GOOGLE_SENDER_EMAIL
     MAIL_DEFAULT_SENDER = (MAIL_DEFAULT_SENDER_NAME, MAIL_DEFAULT_SENDER_EMAIL)
 

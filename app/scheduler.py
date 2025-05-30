@@ -27,7 +27,8 @@ def summarize_abstracts_for_newsletter(abstracts_data: list, max_papers_to_summa
 
     for paper in papers_to_process:
         prompt = (
-            f"Provide a concise summary (2-3 key sentences) of the following research paper abstract, focusing on its main contribution and findings.\n\n"
+            f"Extract exactly 3 key takeaways from the following research paper abstract. Present these takeaways as a numbered list. IMPORTANT: Each numbered takeaway MUST start on a new line, ideally separated by an HTML <br> tag.\n"
+            f"Each takeaway should be concise and highlight a main contribution, finding, or methodology.\n\n"
             f"Title: {paper.get('title', 'N/A')}\n"
             f"Abstract: {paper.get('summary', 'N/A')}"
         )
@@ -40,7 +41,7 @@ def summarize_abstracts_for_newsletter(abstracts_data: list, max_papers_to_summa
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,
-                max_tokens=150 # Short summary
+                max_tokens=300 # Increased from 150 for 3 takeaways
             )
             ai_summary = response.choices[0].message.content.strip()
             paper_with_summary = {**paper, 'ai_summary': ai_summary}
