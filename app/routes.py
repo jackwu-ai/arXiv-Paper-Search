@@ -17,7 +17,7 @@ from threading import Thread
 from app.models import db, Subscription, _generate_email_hash
 from app.utils import send_email, generate_confirmation_token, verify_confirmation_token
 from app import limiter # Import limiter from app/__init__.py
-from app.scheduler import send_weekly_newsletter_job # Import the newsletter job
+from app.scheduler import send_weekly_newsletter_job, summarize_abstracts_for_newsletter # Import the newsletter job and summarize_abstracts_for_newsletter
 
 main = Blueprint('main', __name__)
 
@@ -288,39 +288,66 @@ def subscribe():
     try:
         hashed_email = _generate_email_hash(email)
         existing_subscription = Subscription.query.filter_by(email_hash=hashed_email).first()
+
         if existing_subscription:
-            if existing_subscription.is_confirmed:
+            if existing_subscription.is_confirmed and not existing_subscription.unsubscribed_at:
                 return jsonify({'message': 'This email is already subscribed and confirmed.'}), 409
-            elif not existing_subscription.unsubscribed_at:
+            elif existing_subscription.unsubscribed_at:
+                # User is re-subscribing after having unsubscribed
                 token = generate_confirmation_token(email)
                 existing_subscription.confirmation_token = token
+                existing_subscription.is_confirmed = False # Require re-confirmation
+                existing_subscription.unsubscribed_at = None # Clear unsubscription timestamp
+                existing_subscription.subscribed_at = datetime.datetime.utcnow() # Update subscription time
+                existing_subscription.keywords = keywords # Update keywords if provided
                 db.session.commit()
-                confirmation_url = url_for('.confirm_subscription', token=token, _external=True) # Use . for blueprint route
+                confirmation_url = url_for('.confirm_subscription', token=token, _external=True)
                 send_email(
                     to_email=email, 
-                    subject='Confirm Your Subscription (Resend)', 
-                    template_name_or_html='emails/confirmation_email.html', # Ensure this template exists
+                    subject='Confirm Your Re-Subscription', 
+                    template_name_or_html='emails/confirmation_email.html',
                     confirmation_url=confirmation_url,
                     name_or_email=email,
                     expiration_hours=current_app.config.get('SECURITY_TOKEN_MAX_AGE_HOURS', 1)
                 )
-                return jsonify({'message': 'Subscription pending. A new confirmation email has been sent.'}), 202
-        token = generate_confirmation_token(email)
-        # Pass keywords to the Subscription constructor
-        new_subscription = Subscription(email=email, confirmation_token=token, keywords=keywords)
-        db.session.add(new_subscription)
-        db.session.commit()
-        confirmation_url = url_for('.confirm_subscription', token=token, _external=True) # Use . for blueprint route
-        send_email(
-            to_email=email, 
-            subject='Confirm Your Subscription', 
-            template_name_or_html='emails/confirmation_email.html', # Ensure this template exists
-            confirmation_url=confirmation_url,
-            name_or_email=email,
-            expiration_hours=current_app.config.get('SECURITY_TOKEN_MAX_AGE_HOURS', 1)
-        )
-        current_app.logger.info(f"Subscription initiated for {email}. Confirmation email sent.")
-        return jsonify({'message': 'Subscription successful! Please check your email to confirm.'}), 201
+                current_app.logger.info(f"Re-subscription initiated for {email}. Confirmation email sent.")
+                return jsonify({'message': 'Re-subscription successful! Please check your email to confirm.'}), 201
+            elif not existing_subscription.is_confirmed and not existing_subscription.unsubscribed_at:
+                # Subscription was initiated but never confirmed
+                token = generate_confirmation_token(email)
+                existing_subscription.confirmation_token = token
+                existing_subscription.is_confirmed = False # Require re-confirmation
+                existing_subscription.unsubscribed_at = None # Clear unsubscription timestamp
+                existing_subscription.subscribed_at = datetime.datetime.utcnow() # Update subscription time
+                existing_subscription.keywords = keywords # Update keywords if provided
+                db.session.commit()
+                confirmation_url = url_for('.confirm_subscription', token=token, _external=True)
+                send_email(
+                    to_email=email, 
+                    subject='Confirm Your Subscription', 
+                    template_name_or_html='emails/confirmation_email.html',
+                    confirmation_url=confirmation_url,
+                    name_or_email=email,
+                    expiration_hours=current_app.config.get('SECURITY_TOKEN_MAX_AGE_HOURS', 1)
+                )
+                current_app.logger.info(f"Subscription initiated for {email}. Confirmation email sent.")
+                return jsonify({'message': 'Subscription successful! Please check your email to confirm.'}), 201
+        else: # No existing subscription, create a new one
+            token = generate_confirmation_token(email)
+            new_subscription = Subscription(email=email, confirmation_token=token, keywords=keywords)
+            db.session.add(new_subscription)
+            db.session.commit()
+            confirmation_url = url_for('.confirm_subscription', token=token, _external=True)
+            send_email(
+                to_email=email,
+                subject='Confirm Your Subscription',
+                template_name_or_html='emails/confirmation_email.html',
+                confirmation_url=confirmation_url,
+                name_or_email=email,
+                expiration_hours=current_app.config.get('SECURITY_TOKEN_MAX_AGE_HOURS', 1)
+            )
+            current_app.logger.info(f"New subscription created for {email}. Confirmation email sent.")
+            return jsonify({'message': 'Subscription successful! Please check your email to confirm.'}), 201
     except ValueError as ve:
         current_app.logger.warning(f"ValueError during subscription for {email}: {ve}")
         return jsonify({'message': str(ve)}), 400
@@ -368,6 +395,11 @@ def confirm_subscription():
         flash('An error occurred during confirmation. Please try again or contact support.', 'danger')
         return redirect(url_for('.index'))
 
+@main.route('/unsubscribe-request', methods=['GET'])
+def unsubscribe_request():
+    """Serves the page where users can enter their email to unsubscribe."""
+    return render_template('unsubscribe_page.html')
+
 @main.route('/unsubscribe', methods=['POST'])
 @limiter.limit(lambda: current_app.config.get('RATELIMIT_DEFAULT', "10 per minute")) # Uncommented and using imported limiter
 def unsubscribe():
@@ -398,32 +430,86 @@ def unsubscribe():
     return jsonify({'message': 'Successfully unsubscribed.'}), 200
     
 @main.route('/admin/send_test_email', methods=['POST'])
-@limiter.limit("5 per hour") # Keep rate limiting
-def send_test_email_route(): # Renamed for clarity, was send_test_email_route
-    current_app.logger.info("Admin: Manual newsletter trigger requested.")
+@limiter.limit("10 per hour") # Adjusted rate limit, was "5 per hour"
+def send_test_email_route():
+    current_app.logger.info("Admin: Test newsletter send requested.")
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body is missing.'}), 400
+
+    target_email = data.get('email')
+    keywords = data.get('keywords')
+    # subject = data.get('subject', f"Test Newsletter - {datetime.datetime.now().strftime('%Y-%m-%d')}")
+    # body_html_content = data.get('body') # This was for a generic email, we want to generate a newsletter
+
+    if not target_email:
+        return jsonify({'error': 'Target email is required for test send.'}), 400
+    
+    # Use provided keywords, or default if empty, similar to the main scheduler job
+    test_query = keywords if keywords and keywords.strip() else "cat:cs.AI"
+    current_app.logger.info(f"Admin: Generating test newsletter for {target_email} with query: '{test_query}'")
+
     try:
-        # We need to run this within an app context if the job itself doesn't establish one
-        # or if it uses current_app extensively.
-        # The send_weekly_newsletter_job in app/scheduler.py already establishes its own app_context.
+        # --- Simplified single-user newsletter generation logic (adapted from scheduler.py) ---
+        # 1. Fetch papers based on test_query
+        arxiv_results = search_papers(query=test_query, count=20, sort_by='submittedDate', sort_order='descending')
+        raw_papers = arxiv_results.get('papers', [])
+        one_week_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+        filtered_papers = []
+        for paper_obj in raw_papers:
+            published_dt = paper_obj.published_date
+            if published_dt and published_dt >= one_week_ago:
+                filtered_papers.append({
+                    'id': paper_obj.id_str,
+                    'title': paper_obj.title,
+                    'summary': paper_obj.summary,
+                    'pdf_link': paper_obj.pdf_link,
+                    'published_date': published_dt.isoformat(),
+                    'authors': paper_obj.authors,
+                    'primary_category': paper_obj.primary_category
+                })
         
-        # It's better to run this in a background thread if it's long-running,
-        # but for an admin trigger, direct call might be acceptable for immediate feedback.
-        # However, the original send_email uses a thread.
-        # For consistency and to prevent blocking, let's wrap the job call in a thread.
-        
-        # Get the current app instance for the thread
-        app_instance = current_app._get_current_object()
+        if not filtered_papers:
+            current_app.logger.info(f"Admin Test: No recent papers found for query '{test_query}'.")
+            # Still send an email, but it will say no papers found.
+            # return jsonify({'message': f'No recent papers found for query "{test_query}". Test email not sent.'}), 200
 
-        def run_newsletter_job_in_thread(app):
-            with app.app_context(): # Ensure app context for the thread
-                send_weekly_newsletter_job()
+        # 2. Generate AI Summaries (for a subset)
+        # Using the same summarization utility from scheduler
+        papers_with_summaries = summarize_abstracts_for_newsletter(filtered_papers, max_papers_to_summarize=5)
 
-        thread = Thread(target=run_newsletter_job_in_thread, args=[app_instance])
-        thread.start()
+        # 3. Compile and Send Newsletter
+        newsletter_subject = f"[TEST] Your Personalized AI Research Newsletter - {datetime.datetime.now().strftime('%Y-%m-%d')}"
+        site_url = current_app.config.get('SITE_URL', url_for('main.index', _external=True))
+        # For a test email, the unsubscribe link might point to the main page or a test unsubscribe page
+        # For simplicity, using the actual unsubscribe request page URL
+        unsubscribe_url = url_for('main.unsubscribe_request', _external=True) 
+
+        html_content = render_template(
+            'emails/newsletter_email.html',
+            papers=papers_with_summaries, # This might be empty if no papers were found
+            subscriber_email=target_email, # For display in the email if needed
+            unsubscribe_url=unsubscribe_url, 
+            site_url=site_url,
+            current_year=datetime.datetime.now().year
+        )
         
-        current_app.logger.info("Admin: Weekly newsletter job manually triggered via thread.")
-        return jsonify({'message': 'Weekly newsletter generation has been manually triggered. Check logs for progress.'}), 200
-        
+        success = send_email(
+            to_email=target_email,
+            subject=newsletter_subject,
+            template_name_or_html=html_content
+        )
+
+        if success:
+            current_app.logger.info(f"Admin: Test newsletter successfully sent to {target_email} with query '{test_query}'.")
+            return jsonify({'message': f'Test newsletter sent to {target_email} with query "{test_query}".'}), 200
+        else:
+            current_app.logger.warning(f"Admin: Failed to send test newsletter to {target_email}.")
+            return jsonify({'error': f'Failed to send test newsletter to {target_email}.'}), 500
+
+    except (ArxivAPIException, NetworkException, ParsingException, ValidationException) as e:
+        current_app.logger.error(f"Admin Test: Error fetching/processing papers from arXiv (query: '{test_query}'): {e}", exc_info=True)
+        return jsonify({'error': f'Error fetching papers for test newsletter: {str(e)}'}), 500
     except Exception as e:
-        current_app.logger.error(f"Admin: Error manually triggering newsletter job: {e}", exc_info=True)
-        return jsonify({'error': 'Could not trigger newsletter job due to an unexpected error.'}), 500 
+        current_app.logger.error(f"Admin: Error sending test newsletter: {e}", exc_info=True)
+        return jsonify({'error': 'Could not send test newsletter due to an unexpected error.'}), 500 

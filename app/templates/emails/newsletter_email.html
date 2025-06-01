@@ -84,7 +84,7 @@
     <div class="container">
         <div class="header">
             <h1>Weekly AI Research Newsletter</h1>
-            <p>Your weekly dose of AI insights, powered by arXiv.</p>
+            <p>Your weekly dose of AI insights, from Paper Lense.</p>
         </div>
 
         {% if papers %}
@@ -111,8 +111,8 @@
 
         <div class="footer">
             <p>You are receiving this email because you subscribed to our newsletter.</p>
-            <p><a href="{{ unsubscribe_url }}">Unsubscribe</a> | <a href="{{ site_url }}">Visit our website</a></p>
-            <p>&copy; {{ current_year }} Your App Name. All rights reserved.</p>
+            <p><a href="{{ url_for('main.unsubscribe_request', _external=True) }}">Unsubscribe</a> | <a href="{{ site_url }}">Visit Paper Lense</a></p>
+            <p>&copy; {{ current_year }} Paper Lense. All rights reserved.</p>
         </div>
     </div>
 </body>

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Unsubscribe from Newsletter - Paper Lense{% endblock %}
+
+{% block styles %}
+    {{ super() }} {# Include styles from base.html #}
+    <style>
+        /* Specific styles for unsubscribe page can go here, or override base styles */
+        /* The body flex styles from the original unsubscribe_page might conflict with base.html body, so we rely on base.html for body styling */
+        .content-wrapper {
+            flex: 1; /* This was part of the original attempt to make footer sticky, might need adjustment with base.html structure */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 2rem; /* Add some padding from navbar */
+            padding-bottom: 2rem; /* Add some padding from footer */
+        }
+        .unsubscribe-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        .feedback-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none; /* Hidden by default */
+        }
+        .feedback-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .feedback-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="unsubscribe-container">
+        <h2>Unsubscribe from Newsletter</h2>
+        <p>We're sorry to see you go. Please enter your email address to unsubscribe.</p>
+        <form id="unsubscribeForm">
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <button type="submit" class="btn btn-danger">Unsubscribe</button>
+        </form>
+        <div id="feedbackMessage" class="feedback-message" role="alert"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }} {# Include scripts from base.html, like main_v2.js and subscribe.js (though subscribe.js might not be needed here) #}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const unsubscribeForm = document.getElementById('unsubscribeForm');
+            const emailInput = document.getElementById('email');
+            const feedbackMessage = document.getElementById('feedbackMessage');
+
+            if (unsubscribeForm) { // Check if the form exists
+                unsubscribeForm.addEventListener('submit', async function (event) {
+                    event.preventDefault();
+                    const email = emailInput.value.trim();
+
+                    if (!email) {
+                        showFeedback('Please enter your email address.', 'error');
+                        return;
+                    }
+
+                    // Clear previous feedback
+                    feedbackMessage.style.display = 'none';
+                    feedbackMessage.textContent = '';
+                    feedbackMessage.className = 'feedback-message';
+
+                    try {
+                        const response = await fetch("{{ url_for('main.unsubscribe') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ email: email }),
+                        });
+                        
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            showFeedback(result.message || 'You have been successfully unsubscribed.', 'success');
+                            unsubscribeForm.reset();
+                        } else {
+                            showFeedback(result.error || result.message || 'An error occurred. Please try again.', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Unsubscribe error:', error);
+                        showFeedback('An unexpected error occurred. Please try again.', 'error');
+                    }
+                });
+            }
+
+            function showFeedback(message, type) {
+                feedbackMessage.textContent = message;
+                feedbackMessage.className = 'feedback-message ' + type; // Add type for styling
+                feedbackMessage.style.display = 'block';
+            }
+        });
+    </script>
+    {# No need for Bootstrap JS includes here if they are in base.html #}
+{% endblock %} 

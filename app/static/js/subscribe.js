@@ -115,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         testSendButton.addEventListener('click', async () => {
             hideFeedback();
             const email = emailInput.value.trim();
+            const keywords = keywordsInput.value.trim();
 
             if (!validateEmail(email)) {
                 return;
@@ -124,16 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleButtonLoading(testSendButton, true);
 
             try {
-                // Replace with your actual API endpoint for test send
-                const response = await fetch('/admin/send_test_email', { // Changed from /api/test-send
+                const response = await fetch('/admin/send_test_email', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ 
                         email: email,
-                        subject: "Test Email from Frontend", // Added default subject
-                        body: "<h1>Test Email</h1><p>This is a test email sent from the frontend test button.</p>" // Added default body
+                        keywords: keywords
                     }),
                 });
 
